@@ -1,7 +1,7 @@
 /**
- * Forest Fire Simulation with 2D Graphics
+ * Copyright Peter "Felix" Nguyen & Emmanuel Medina Lopez
  * 
- * @author Peter Nguyen, Emmanuel Medina Lopez
+ * Forest Fire Simulation with 2D Graphics
  */
 import java.awt.Color;
 import java.util.HashSet;
@@ -33,7 +33,6 @@ public class Tree {
 		nearbyTrees.add(tree);
 	}
 	
-	@SuppressWarnings("rawtypes")
 	public Set<Tree> getNearbyTrees() {
 		return nearbyTrees;
 	}

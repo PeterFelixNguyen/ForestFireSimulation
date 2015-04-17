@@ -1,7 +1,7 @@
 /**
- * Forest Fire Simulation with 2D Graphics
+ * Copyright Peter "Felix" Nguyen & Emmanuel Medina Lopez
  * 
- * @author Peter Nguyen, Emmanuel Medina Lopez
+ * Forest Fire Simulation with 2D Graphics
  */
 import java.util.ArrayList;
 import java.util.Collections;
@@ -86,7 +86,6 @@ public class TreeGrouper {
 		return mid; // not found
 	}
 	
-	@SuppressWarnings("unused")
 	public int xBinarySearch(Tree[] trees, int key) {
 		int low = 0;
 		int high = trees.length - 1;
