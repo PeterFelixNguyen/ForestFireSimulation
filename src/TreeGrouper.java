@@ -22,9 +22,9 @@ public class TreeGrouper {
 			int y2 = trees[i].getY() + ForestFire.BURN_RADIUS / 2;
 
 			if (x1 < 0)      { x1 = 0; } 
-			if (x2 > ForestFire.WIDTH)  { x2 = ForestFire.WIDTH;  }
+			if (x2 > ForestFire.width)  { x2 = ForestFire.width;  }
 			if (y1 < 0)      { y1 = 0; }
-			if (y2 > ForestFire.HEIGHT) { y2 = ForestFire.HEIGHT; }
+			if (y2 > ForestFire.height) { y2 = ForestFire.height; }
 
 			tempTreesA.clear();
 			int y = yBinarySearch(trees, y1);

@@ -33,10 +33,16 @@ import javax.swing.Timer;
 
 @SuppressWarnings("serial")
 public class ForestFire extends JPanel implements ActionListener {
+	private static String resolution = "";
+	private final static String RESOLUTION_WVGA = "800x480";
+	private final static String RESOLUTION_WSVGA = "1024x600";
+	private final static int DEFAULT_WIDTH = 200;
+	private final static int DEFAULT_HEIGHT = 200;
+	
 	// GUI Frame (fast: 800x480) (slow:1200x600)
 	private static JFrame frame = new JFrame();
-	public final static int WIDTH = 1200;
-	public final static int HEIGHT = 600;
+	public static int width = DEFAULT_WIDTH;
+	public static int height = DEFAULT_HEIGHT;
 	// Tree Stuff
 	public final static int TREE_DIAMETER = 20;
 	public final static int BURN_RADIUS = 40;
@@ -44,10 +50,18 @@ public class ForestFire extends JPanel implements ActionListener {
 	public final static int CLICK_RADIUS = 30;
 	public final static int CLICK_RADIUS_SQR = CLICK_RADIUS * CLICK_RADIUS;
 	
-	// Tree objects (fast: 600) (slow:1300)
-	private static int numTrees = 1300;
-	private static Tree[] sortedTrees = new Tree[numTrees];
-	private static BufferedImage[] fireAnimation = new BufferedImage[75];
+	// Options
+	public static final double TREE_FACTOR_LARGE = 0.0020;
+	public static final double TREE_FACTOR_MEDIUM = 0.0015;
+	public static final double TREE_FACTOR_SMALL = 0.0010;	
+	
+	// Tree objects 
+	private static int numTrees;
+	private static Tree[] sortedTrees;
+	
+	/* Tree animations */
+	private static final int ANIMATION_LENGTH = 75;
+	private static BufferedImage[] fireAnimation = new BufferedImage[ANIMATION_LENGTH];
 	private static BufferedImage stage1fire1;
 	private static BufferedImage stage1fire2;
 	private static BufferedImage stage1fire3;
@@ -81,6 +95,24 @@ public class ForestFire extends JPanel implements ActionListener {
 	int tick = 0;
 
 	public ForestFire() {
+		System.out.println("numTrees = " + numTrees);
+		
+		resolution = RESOLUTION_WSVGA;
+		
+		if (resolution == RESOLUTION_WVGA) {
+			width = 800;
+			height = 480;
+		} else if (resolution == RESOLUTION_WSVGA) {
+			width = 1024;
+			height = 600;
+		}
+		
+		// numTrees = x-percentage of total pixels
+		numTrees = (int) (TREE_FACTOR_MEDIUM * (width * height));
+		sortedTrees  = new Tree[numTrees];
+		makeTrees();
+		TreeGrouper.buildTreeSets(sortedTrees);
+
 		try {
 			stage1fire1 = ImageIO.read(loader.getResource("img/stage1fire1big.png"));
 			stage1fire2 = ImageIO.read(loader.getResource("img/stage1fire2big.png"));
@@ -98,7 +130,7 @@ public class ForestFire extends JPanel implements ActionListener {
 			stage5fire2 = ImageIO.read(loader.getResource("img/stage5fire2big.png"));
 			stage5fire3 = ImageIO.read(loader.getResource("img/stage5fire3big.png"));
 			
-			for (int i = 0; i < 75; i++) {
+			for (int i = 0; i < ANIMATION_LENGTH; i++) {
 				if (i < 15) {
 					if (i % 3 == 0) {
 						fireAnimation[i] = stage1fire1;
@@ -131,7 +163,7 @@ public class ForestFire extends JPanel implements ActionListener {
 					} else if (i % 3 == 2) {
 						fireAnimation[i] = stage4fire3;
 					}
-				} else if (i < 75) {
+				} else if (i < ANIMATION_LENGTH) {
 					if (i % 3 == 0) {
 						fireAnimation[i] = stage5fire1;
 					} else if (i % 3 == 1) {
@@ -147,7 +179,7 @@ public class ForestFire extends JPanel implements ActionListener {
 		}
 		
 		// Set the size of container
-		Dimension fixedSize = new Dimension(WIDTH, HEIGHT);
+		Dimension fixedSize = new Dimension(width, height);
 		setPreferredSize(fixedSize);
 		setSize(fixedSize);
 		setMinimumSize(fixedSize);
@@ -161,7 +193,7 @@ public class ForestFire extends JPanel implements ActionListener {
 
 		g.setColor(new Color(90, 170, 90));
 
-		g.fillRect(0, 0, WIDTH, HEIGHT);
+		g.fillRect(0, 0, width, height);
 		
 		for (int i = 0; i < numTrees; i++) {
 			int x = sortedTrees[i].getX();
@@ -209,7 +241,7 @@ public class ForestFire extends JPanel implements ActionListener {
 			
 			// Fire animation
 			if (sortedTrees[i].getState() == Tree.RED) {
-				if (sortedTrees[i].fireIndex < 74) {
+				if (sortedTrees[i].fireIndex < ANIMATION_LENGTH - 1) {
 					sortedTrees[i].tick();					
 				}
 				g2.drawImage(fireAnimation[sortedTrees[i].fireIndex], x, y - 12, this);
@@ -219,16 +251,16 @@ public class ForestFire extends JPanel implements ActionListener {
 
 	private static void makeTrees() {
 		// Generate burning tree
-		int burnStartX = (int) (Math.random() * WIDTH);
-		int burnStartY = (int) (Math.random() * HEIGHT);
+		int burnStartX = (int) (Math.random() * width - TREE_DIAMETER - 15);
+		int burnStartY = (int) (Math.random() * height - 40);
 		sortedTrees[0] = new Tree(burnStartX, burnStartY);
 		sortedTrees[0].setState(Tree.RED);
 		ignitedTrees.add(sortedTrees[0]);
 
 		// Generate trees
 		for (int i = 1; i < numTrees; i++) {
-			int x = (int) (10 + Math.random() * (WIDTH - TREE_DIAMETER - 15));
-			int y = (int) (10 + Math.random() * (HEIGHT - 40));
+			int x = (int) (10 + Math.random() * (width - TREE_DIAMETER - 15));
+			int y = (int) (10 + Math.random() * (height - 40));
 
 			sortedTrees[i] = new Tree(x, y);
 		}
@@ -243,10 +275,8 @@ public class ForestFire extends JPanel implements ActionListener {
 
 	public static void main(String[] args) {
 	    System.setProperty("sun.java2d.opengl", "True");
-		System.out.println("PETER! " + System.getProperty("sun.java2d.opengl"));
+		System.out.println("OpenGL = " + System.getProperty("sun.java2d.opengl"));
 		
-		makeTrees();
-		TreeGrouper.buildTreeSets(sortedTrees);
 		ForestFire forestFire = new ForestFire();
 		forestFire.addMouseListener(new MouseListener() {
 			
@@ -279,9 +309,9 @@ public class ForestFire extends JPanel implements ActionListener {
 				int y2 = e.getY() + ForestFire.CLICK_RADIUS / 2;
 				
 				if (x1 < 0)      { x1 = 0; } 
-				if (x2 > ForestFire.WIDTH)  { x2 = ForestFire.WIDTH;  }
+				if (x2 > ForestFire.width)  { x2 = ForestFire.width;  }
 				if (y1 < 0)      { y1 = 0; }
-				if (y2 > ForestFire.HEIGHT) { y2 = ForestFire.HEIGHT; }
+				if (y2 > ForestFire.height) { y2 = ForestFire.height; }
 
 				tempTreesA.clear();
 				int y = TreeGrouper.yBinarySearch(sortedTrees, y1);
@@ -318,8 +348,8 @@ public class ForestFire extends JPanel implements ActionListener {
 			}
 		});
 		
-		frame.setTitle("Forest Fire");
-		frame.setSize(WIDTH + 30, HEIGHT + 50);
+		frame.setTitle("Forest Fire by Peter \"Felix\" Nguyen");
+		frame.setSize(width + 30, height + 50);
 		frame.setLocationRelativeTo(null);
 		frame.setResizable(true);
 		frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
@@ -363,11 +393,11 @@ public class ForestFire extends JPanel implements ActionListener {
 						nearbyTrees[j].setState(Tree.RED);
 					}
 				}
-				System.out.println("newlyIgnitedTrees Size: " + newlyIgnitedTrees.size());
-				System.out.println("Ingited Trees Size: " + ignitedTrees.size());
+				//System.out.println("newlyIgnitedTrees Size: " + newlyIgnitedTrees.size());
+				//System.out.println("Ingited Trees Size: " + ignitedTrees.size());
 
 				ignitedTrees.clear();
-				System.out.println("ignitedTrees cleared size: " + ignitedTrees.size());
+				//System.out.println("ignitedTrees cleared size: " + ignitedTrees.size());
 				
 				for (Tree tree : newlyIgnitedTrees) {
 					ignitedTrees.add(tree);
@@ -375,7 +405,7 @@ public class ForestFire extends JPanel implements ActionListener {
 				
 			}
 			newlyIgnitedTrees.clear();
-			System.out.println("newlyIgnitedTrees cleared size: " + newlyIgnitedTrees.size());
+			//System.out.println("newlyIgnitedTrees cleared size: " + newlyIgnitedTrees.size());
 		} 
 	}
 }
