@@ -1,5 +1,5 @@
 /**
- * Copyright Peter "Felix" Nguyen & Emmanuel Medina Lopez
+ * Copyright 2015 Peter "Felix" Nguyen & Emmanuel Medina Lopez
  * 
  * Forest Fire Simulation with 2D Graphics
  */
@@ -39,6 +39,7 @@ public class Tree {
 	
 	public Tree(int x, int y) {
 		fireIndex = (int) (Math.random() * 3 + 1);
+		//fireIndex = 0;
 		state = GREEN;
 		
 		isHomogenous = false;
@@ -59,7 +60,7 @@ public class Tree {
 			return new Color(30, 150, 70); // leaves
 			//return new Color(250, 130, 20); // fire
 		} else {
-			return Color.BLACK;
+			return new Color(0,0,0,0);
 		}
 	}
 
@@ -69,7 +70,7 @@ public class Tree {
 		} else if (state == RED) {
 			return new Color(160, 110, 60);
 		} else {
-			return Color.BLACK;
+			return new Color(70,70,70);
 		}
 	}
 
@@ -78,7 +79,9 @@ public class Tree {
 	}
 
 	public void setState(String state) {
-		this.state = state;
+		if (this.state != BLACK) {
+			this.state = state;
+		}
 	}
 
 	public int getX() {
@@ -87,5 +90,13 @@ public class Tree {
 
 	public int getY() {
 		return y;
+	}
+	
+	// For later implementation
+	public void tick() {
+		fireIndex++;
+		if (fireIndex == 74) {
+			setState(BLACK);
+		}
 	}
 }
