@@ -36,8 +36,8 @@ public class ForestFire extends JPanel implements ActionListener {
 	private static String resolution = "";
 	private final static String RESOLUTION_WVGA = "800x480";
 	private final static String RESOLUTION_WSVGA = "1024x600";
-	private final static int DEFAULT_WIDTH = 200;
-	private final static int DEFAULT_HEIGHT = 200;
+	private final static int DEFAULT_WIDTH = 1200; // 1200
+	private final static int DEFAULT_HEIGHT = 600; // 600
 	
 	// GUI Frame (fast: 800x480) (slow:1200x600)
 	private static JFrame frame = new JFrame();
@@ -94,9 +94,7 @@ public class ForestFire extends JPanel implements ActionListener {
 	// Testing
 	int tick = 0;
 
-	public ForestFire() {
-		System.out.println("numTrees = " + numTrees);
-		
+	public ForestFire() {		
 		resolution = RESOLUTION_WSVGA;
 		
 		if (resolution == RESOLUTION_WVGA) {
@@ -109,6 +107,7 @@ public class ForestFire extends JPanel implements ActionListener {
 		
 		// numTrees = x-percentage of total pixels
 		numTrees = (int) (TREE_FACTOR_MEDIUM * (width * height));
+		System.out.println("numTrees = " + numTrees);
 		sortedTrees  = new Tree[numTrees];
 		makeTrees();
 		TreeGrouper.buildTreeSets(sortedTrees);
@@ -251,12 +250,14 @@ public class ForestFire extends JPanel implements ActionListener {
 
 	private static void makeTrees() {
 		// Generate burning tree
-		int burnStartX = (int) (Math.random() * width - TREE_DIAMETER - 15);
-		int burnStartY = (int) (Math.random() * height - 40);
-		sortedTrees[0] = new Tree(burnStartX, burnStartY);
-		sortedTrees[0].setState(Tree.RED);
-		ignitedTrees.add(sortedTrees[0]);
-
+		if (sortedTrees.length > 0) {
+			int burnStartX = (int) (Math.random() * width - TREE_DIAMETER - 15);
+			int burnStartY = (int) (Math.random() * height - 40);
+			sortedTrees[0] = new Tree(burnStartX, burnStartY);
+			sortedTrees[0].setState(Tree.RED);
+			ignitedTrees.add(sortedTrees[0]);
+		}
+		
 		// Generate trees
 		for (int i = 1; i < numTrees; i++) {
 			int x = (int) (10 + Math.random() * (width - TREE_DIAMETER - 15));
@@ -264,7 +265,7 @@ public class ForestFire extends JPanel implements ActionListener {
 
 			sortedTrees[i] = new Tree(x, y);
 		}
-
+		
 		// Sort y, then x (method 1)
 		// Arrays.sort(treesSorted, new TreeXComparator());
 		// Arrays.sort(treesSorted, new TreeYComparator());
