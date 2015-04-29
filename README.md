@@ -9,8 +9,9 @@ Copyright Peter "Felix" Nguyen and Emmanuel Medina Lopez
 3. [FIXED] Sometimes, a tree positioned beside the northern edge of the map can not be ignited when clicked.
 4. Graphically, burnt tree trunks position are different from healthy tree trunks.
 
-#Issues
+# Issues
 1. Clicking needs to be more accurate. Should target nearest tree instead of trees within click radius.
+2. Need to make sure to re-render a VolatileImage if it is gone from memory.
 
 # Ideas
 1. [DONE] Click on area to start fire at given location
@@ -18,10 +19,14 @@ Copyright Peter "Felix" Nguyen and Emmanuel Medina Lopez
 3. Notify the end of forest fire by checking for lack of fire.
 4. Draw polygon obstacles and terrain.
 5. Different trees have different spread rates.
-6. Rain, wind, lightning, and weather.
+Links that helped me6. Rain, wind, lightning, and weather.
 7. Critters, tree size, and elevation.
 8. Square bushes and shrubs.
 9. Flammable structures.
 10. Dynamic weather (rng or God-mode).
 11. Map editor and map loader.
 12. [DONE] If burning and nearbyTrees added, remove from list of burning trees (or have two sets of burning trees: new burning trees and old burning trees.
+
+# Links that helped me
+1. http://content.gpwiki.org/index.php/Java:Tutorials:VolatileImage
+2. https://docs.oracle.com/javase/8/docs/api/java/awt/image/VolatileImage.html
