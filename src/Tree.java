@@ -1,13 +1,16 @@
 /**
  * Copyright 2015 Peter "Felix" Nguyen & Emmanuel Medina Lopez
  * 
- * Forest Fire Simulation with 2D Graphics
+ * Forest Fire Simulation with 2D Graphics.
+ * 
+ * Tree encapsulates the characteristics and states of individual trees.
  */
 import java.awt.Color;
 import java.util.HashSet;
 import java.util.Set;
 
 public class Tree {
+	// Characteristics
 	public final int x;
 	public final int y;
 	public int fireIndex;
@@ -39,7 +42,6 @@ public class Tree {
 	
 	public Tree(int x, int y) {
 		fireIndex = (int) (Math.random() * 3 + 1);
-		//fireIndex = 0;
 		state = GREEN;
 		
 		isHomogenous = false;
@@ -53,17 +55,22 @@ public class Tree {
 		this.y = y;
 	}
 
+	/**
+	 * This method is deprecated but may have use in the future
+	 */
 	public Color getLeafColor() {
 		if (state == GREEN) {
 			return new Color(30, 150, 70);
 		} else if (state == RED) {
-			return new Color(30, 150, 70); // leaves
-			//return new Color(250, 130, 20); // fire
+			return new Color(30, 150, 70);
 		} else {
 			return new Color(0,0,0,0);
 		}
 	}
 
+	/**
+	 * This method is deprecated but may have use in the future
+	 */
 	public Color getTrunkColor() {
 		if (state == GREEN) {
 			return new Color(160, 110, 60);
@@ -92,7 +99,6 @@ public class Tree {
 		return y;
 	}
 	
-	// For later implementation
 	public void tick() {
 		fireIndex++;
 		if (fireIndex == 74) {

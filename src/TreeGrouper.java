@@ -1,7 +1,11 @@
 /**
  * Copyright 2015 Peter "Felix" Nguyen & Emmanuel Medina Lopez
  * 
- * Forest Fire Simulation with 2D Graphics
+ * Forest Fire Simulation with 2D Graphics.
+ * 
+ * TreeGrouper is used to build a list of neihgboring trees for each tree.
+ * It also performs a custom binary search that speeds up the 
+ * process of finding nearby trees to burn upon triggering a fire.
  */
 import java.util.ArrayList;
 import java.util.Collections;
@@ -12,8 +16,6 @@ public class TreeGrouper {
 	private static ArrayList<Tree> tempTreesB = new ArrayList<Tree>();
 	
 	public static void buildTreeSets(Tree[] trees) {
-		//System.out.println("Burn radius: " + ForestFire.BURN_RADIUS_SQR);
-		
 		for (int i = 0; i < trees.length; i++) {
 			// Establish nearby square area
 			int x1 = trees[i].getX() - ForestFire.BURN_RADIUS / 2;

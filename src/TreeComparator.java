@@ -1,7 +1,11 @@
 /**
  * Copyright 2015 Peter "Felix" Nguyen & Emmanuel Medina Lopez
  * 
- * Forest Fire Simulation with 2D Graphics
+ * Forest Fire Simulation with 2D Graphics.
+ *
+ * TreeComparator is used to compare the position of two trees by comparing x and y coordinates. 
+ * Trees sorted in ascending order should have trees in top-left corner indexed first in a list.
+ * Trees sorted in ascending order should have trees in bottom-right corner indexed last in a list.
  */
 import java.util.Comparator;
 

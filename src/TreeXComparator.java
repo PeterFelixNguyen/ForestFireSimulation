@@ -1,7 +1,9 @@
 /**
  * Copyright 2015 Peter "Felix" Nguyen & Emmanuel Medina Lopez
  * 
- * Forest Fire Simulation with 2D Graphics
+ * Forest Fire Simulation with 2D Graphics.
+ * 
+ * TreeXComparator is used to sort two Trees based on the x coordinate.
  */
 import java.util.Comparator;
 
