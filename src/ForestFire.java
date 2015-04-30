@@ -7,9 +7,9 @@
  */
 import java.awt.AlphaComposite;
 import java.awt.BasicStroke;
-import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Dimension;
+import java.awt.FlowLayout;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
 import java.awt.GraphicsConfiguration;
@@ -32,8 +32,10 @@ import java.util.HashSet;
 import java.util.Set;
 
 import javax.imageio.ImageIO;
+import javax.swing.BorderFactory;
 import javax.swing.Box;
 import javax.swing.BoxLayout;
+import javax.swing.JButton;
 import javax.swing.JFrame;
 import javax.swing.JPanel;
 import javax.swing.Timer;
@@ -129,6 +131,17 @@ public class ForestFire extends JPanel implements ActionListener {
 	// Position tracker
 	int tick = 0;
 
+	// Playback buttons
+	static JButton jbPlay = new JButton("PLAY");
+	static JButton jbPause = new JButton("PAUSE");
+	static JButton jbStop = new JButton("STOP");
+	static JButton jbReplay = new JButton("REPLAY");
+	static JButton jbSlow = new JButton("0.5x");
+	static JButton jbNormal = new JButton("1.0x");
+	static JButton jbFast = new JButton("1.5x");
+	static JButton jbFaster = new JButton("2.0x");
+	static JButton jbMap = new JButton("MAP");
+	
 	public ForestFire() {
 		// Select resolution name
 		resolution = RESOLUTION_ALIEN;
@@ -250,7 +263,6 @@ public class ForestFire extends JPanel implements ActionListener {
 		setSize(fixedSize);
 		setMinimumSize(fixedSize);
 		setMaximumSize(fixedSize);
-		setBackground(Color.RED);
 	}
 
 
@@ -576,16 +588,59 @@ public class ForestFire extends JPanel implements ActionListener {
 
 		// Setup frame
 		frame.setTitle("Forest Fire by Peter \"Felix\" Nguyen");
-		frame.setSize(width + 30, height + 50);
-		frame.setMinimumSize(new Dimension(width + 30, height + 50));
+		frame.setSize(width + 30, height + 120);
+		frame.setMinimumSize(new Dimension(width + 30, height + 120));
 		frame.setLocationRelativeTo(null);
-		frame.setResizable(true);
+		frame.setResizable(false);
 		frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 		frame.getContentPane().setLayout(new BoxLayout(frame.getContentPane(), BoxLayout.X_AXIS));
+		frame.getContentPane().setBackground(new Color(50,50,50));
 
+		
+		// Playback standard button group
+		JPanel groupPlayback = new JPanel(new FlowLayout(FlowLayout.LEFT));
+		groupPlayback.setBackground(new Color(215,199,151));
+		groupPlayback.setBorder(BorderFactory.createTitledBorder(BorderFactory.createLineBorder(Color.BLACK, 2), "Playback Controls"));
+		groupPlayback.add(jbPlay);
+		groupPlayback.add(jbPause);
+		groupPlayback.add(jbStop);
+		groupPlayback.add(jbReplay);
+		
+		// Simulation speed button group
+		JPanel groupSpeed = new JPanel(new FlowLayout(FlowLayout.LEFT));
+		groupSpeed.setBackground(new Color(215,199,151));
+		groupSpeed.setBorder(BorderFactory.createTitledBorder(BorderFactory.createLineBorder(Color.BLACK, 2), "Simulation Speed"));
+		groupSpeed.add(jbSlow);
+		groupSpeed.add(jbNormal);
+		groupSpeed.add(jbFast);
+		groupSpeed.add(jbFaster);
+		
+		// Configure button group
+		JPanel groupConfigure = new JPanel(new FlowLayout(FlowLayout.LEFT));
+		groupConfigure.setBackground(new Color(215,199,151));
+		groupConfigure.setBorder(BorderFactory.createTitledBorder(BorderFactory.createLineBorder(Color.BLACK, 2), "Configure..."));
+		groupConfigure.add(jbMap);
+		
+		// Button bar for user controls and settings
+		JPanel buttonBar = new JPanel(new FlowLayout(FlowLayout.LEFT));
+		buttonBar.setBackground(new Color(215,199,151));
+		buttonBar.setSize(new Dimension(width, 70));
+		buttonBar.setMinimumSize(new Dimension(width, 70));
+		buttonBar.setMaximumSize(new Dimension(width, 70));		
+		buttonBar.add(groupPlayback);
+		buttonBar.add(groupSpeed);
+		buttonBar.add(groupConfigure);
+		
+		// Container to lay out the map and button bar
+		JPanel fullInterface = new JPanel();
+		fullInterface.setBorder(BorderFactory.createLineBorder(Color.BLACK, 2));
+		fullInterface.setLayout(new BoxLayout(fullInterface, BoxLayout.Y_AXIS));
+		fullInterface.add(buttonBar);
+		fullInterface.add(forestFire);
+		
 		// Add components to frame
 		frame.add(Box.createHorizontalGlue());
-		frame.add(forestFire, BorderLayout.CENTER);
+		frame.add(fullInterface);
 		frame.add(Box.createHorizontalGlue());
 
 		// Timer for animation and state change

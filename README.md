@@ -30,3 +30,4 @@ Links that helped me6. Rain, wind, lightning, and weather.
 # Links that helped me
 1. http://content.gpwiki.org/index.php/Java:Tutorials:VolatileImage
 2. https://docs.oracle.com/javase/8/docs/api/java/awt/image/VolatileImage.html
+3. https://docs.oracle.com/javase/tutorial/2d/advanced/compositing.html
