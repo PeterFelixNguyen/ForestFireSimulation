@@ -30,21 +30,16 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.Set;
+import java.util.Stack;
 
 import javax.imageio.ImageIO;
 import javax.swing.BorderFactory;
-import javax.swing.Box;
-import javax.swing.BoxLayout;
 import javax.swing.JButton;
-import javax.swing.JFrame;
 import javax.swing.JPanel;
 import javax.swing.Timer;
 
 @SuppressWarnings("serial")
 public class ForestFire extends JPanel implements ActionListener {
-	// GUI Frame
-	private static JFrame frame = new JFrame();
-	
 	// Constants to specify map resolution
 	private final static String RESOLUTION_WVGA = "800x480";
 	private final static String RESOLUTION_WSVGA = "1024x600";
@@ -124,8 +119,9 @@ public class ForestFire extends JPanel implements ActionListener {
 	// Resource loader
 	private ClassLoader loader = getClass().getClassLoader();
 
-	// Threads
-	private static Timer timer;
+	// Thread timers
+	private static Timer timerSimulation;
+	private static Timer timerReplay;
 	private int altSequenceCounter = 0;
 
 	// Position tracker
@@ -141,6 +137,25 @@ public class ForestFire extends JPanel implements ActionListener {
 	static JButton jbFast = new JButton("1.5x");
 	static JButton jbFaster = new JButton("2.0x");
 	static JButton jbMap = new JButton("MAP");
+	
+	// Playback states
+	private static boolean paused = false;
+	
+	// Speed states
+	private static final float speedSlow = 0.5f;
+	private static final float speedNormal = 1.0f;
+	private static final float speedFast = 1.5f;
+	private static final float speedFaster = 2.0f;
+	public static int simDelay = 150;
+	
+	// Replay track
+	private static ArrayList<ClickAction> clickTrack = new ArrayList<ClickAction>(); // for now
+	@SuppressWarnings("unused")
+	private static Stack<ClickAction> clickStack = new Stack<ClickAction>(); // future use
+	private static boolean replayMode = false;
+	
+	// Subcomponents
+	private static MapButtons mapButtons;
 	
 	public ForestFire() {
 		// Select resolution name
@@ -257,14 +272,157 @@ public class ForestFire extends JPanel implements ActionListener {
 			e.printStackTrace();
 		}
 
+		addMouseListener(new MouseListener() {
+
+			@Override
+			public void mouseReleased(MouseEvent e) {
+
+			}
+
+			@Override
+			public void mousePressed(MouseEvent e) {
+				if (!replayMode) {
+					clickTrack.add(new ClickAction(e.getX(), e.getY(), tick));
+					
+					clickFunction(e.getX(), e.getY());
+				}
+			}
+
+			@Override
+			public void mouseExited(MouseEvent e) {
+
+			}
+
+			@Override
+			public void mouseEntered(MouseEvent e) {
+
+			}
+
+			@Override
+			public void mouseClicked(MouseEvent e) {
+
+			}
+		});
+
 		// Set the size of container
 		Dimension fixedSize = new Dimension(width, height);
 		setPreferredSize(fixedSize);
 		setSize(fixedSize);
 		setMinimumSize(fixedSize);
 		setMaximumSize(fixedSize);
+		
+		// Timer for animation and state change
+		timerSimulation = new Timer(simDelay, this);
+		timerSimulation.start();
+		
+		timerReplay = new Timer(simDelay, new ActionListener() {
+			
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				if (tick < numTrees * 2 && !paused) {
+					repaint();
+					//System.out.println("Replay Timer Running");
+					
+					if (clickTrack.size() > 0) {
+						if (tick == clickTrack.get(0).getTick()) {
+							int xClicked = clickTrack.get(0).getX();
+							int yClicked = clickTrack.get(0).getY();
+							clickFunction(xClicked, yClicked);
+							clickTrack.remove(0);
+						}				
+					}
+					Set<Tree> newlyIgnitedTrees = new HashSet<Tree>();
+					altSequenceCounter++;
+
+					if (altSequenceCounter % 5 == 0) {
+						altSequenceCounter = 0;
+						int sizeBurning = ignitedTrees.size();
+						Tree[] ignitedTreesArray = (Tree[]) ignitedTrees.toArray(new Tree[sizeBurning]);
+						for (int i = 0; i < sizeBurning; i++) {
+							int nearbySize = ignitedTreesArray[i].getNearbyTrees().size();
+							Tree[] nearbyTrees = (Tree[]) ignitedTreesArray[i].getNearbyTrees().toArray(new Tree[nearbySize]);
+
+							for (int j = 0; j < nearbyTrees.length; j++) {
+								if (nearbyTrees[j].getState() == Tree.GREEN) {
+									newlyIgnitedTrees.add(nearbyTrees[j]);
+								}
+								nearbyTrees[j].setState(Tree.RED);
+							}
+						}
+						// System.out.println("newlyIgnitedTrees Size: " + newlyIgnitedTrees.size());
+						// System.out.println("ingitedTrees size: " + ignitedTrees.size());
+
+						ignitedTrees.clear();
+						// System.out.println("ignitedTrees size after clear: " + ignitedTrees.size());
+
+						for (Tree tree : newlyIgnitedTrees) {
+							ignitedTrees.add(tree);
+						}
+
+					}
+					newlyIgnitedTrees.clear();
+					// System.out.println("newlyIgnitedTrees size after clear: " + newlyIgnitedTrees.size());
+					tick++;
+				}
+			}
+		});
+		
+		// Subcomponents
+		mapButtons = new MapButtons();
 	}
 
+	public void clickFunction(int xClick, int yClick) {
+		System.out.println("Clicked: (" + xClick + "," + yClick + ")");
+		int x1 = xClick - ForestFire.CLICK_RADIUS / 2;
+		int x2 = xClick + ForestFire.CLICK_RADIUS / 2;
+		int y1 = yClick - ForestFire.CLICK_RADIUS / 2;
+		int y2 = yClick + ForestFire.CLICK_RADIUS / 2;
+
+		if (x1 < 0) {
+			x1 = 0;
+		}
+		if (x2 > ForestFire.width) {
+			x2 = ForestFire.width;
+		}
+		if (y1 < 0) {
+			y1 = 0;
+		}
+		if (y2 > ForestFire.height) {
+			y2 = ForestFire.height;
+		}
+
+		tempTreesA.clear();
+		int y = TreeGrouper.yBinarySearch(sortedTrees, y1);
+		int yEnd = TreeGrouper.yBinarySearch(sortedTrees, y2);
+
+		for (; y <= yEnd; y++) {
+			tempTreesA.add(sortedTrees[y]);
+		}
+		Collections.sort(tempTreesA, new TreeXComparator());
+
+		tempTreesB.clear();
+		int x = TreeGrouper.xBinarySearch(tempTreesA, x1);
+		int xEnd = TreeGrouper.xBinarySearch(tempTreesA, x2);
+
+		for (; x <= xEnd; x++) {
+			tempTreesB.add(tempTreesA.get(x));
+		}
+
+		for (int j = 0; j < tempTreesB.size(); j++) {
+			int originX = xClick;
+			int originY = yClick;
+			int nearbyX = tempTreesB.get(j).getX();
+			int nearbyY = tempTreesB.get(j).getY();
+
+			int value = (nearbyX - originX) * (nearbyX - originX) + (nearbyY - originY) * (nearbyY - originY);
+
+			if (value <= ForestFire.BURN_RADIUS_SQR) {
+				tempTreesB.get(j).setState(Tree.RED);
+
+				ignitedTrees.add(tempTreesB.get(j));
+			}
+		}
+	}
 
 	private VolatileImage createVolatileImage(int width, int height, int transparency) {
 		GraphicsEnvironment ge = GraphicsEnvironment.getLocalGraphicsEnvironment();
@@ -497,164 +655,13 @@ public class ForestFire extends JPanel implements ActionListener {
 		}
 	}
 
-	public static void main(String[] args) {
-		// Enable hardware acceleration
-		System.setProperty("sun.java2d.opengl", "True");
-		
-		// Enable acceleration for translucent graphics
-		System.setProperty("sun.java2d.translaccel", "True");
-		System.setProperty("sun.java2d.ddforcevram", "True");
-		
-		// Verify acceleration enabled
-		System.out.println("OpenGL = " + System.getProperty("sun.java2d.opengl"));
-
-		ForestFire forestFire = new ForestFire();
-		forestFire.addMouseListener(new MouseListener() {
-
-			@Override
-			public void mouseReleased(MouseEvent e) {
-
-			}
-
-			@Override
-			public void mousePressed(MouseEvent e) {
-
-			}
-
-			@Override
-			public void mouseExited(MouseEvent e) {
-
-			}
-
-			@Override
-			public void mouseEntered(MouseEvent e) {
-
-			}
-
-			@Override
-			public void mouseClicked(MouseEvent e) {
-				System.out.println("Clicked: (" + e.getX() + "," + e.getY() + ")");
-				int x1 = e.getX() - ForestFire.CLICK_RADIUS / 2;
-				int x2 = e.getX() + ForestFire.CLICK_RADIUS / 2;
-				int y1 = e.getY() - ForestFire.CLICK_RADIUS / 2;
-				int y2 = e.getY() + ForestFire.CLICK_RADIUS / 2;
-
-				if (x1 < 0) {
-					x1 = 0;
-				}
-				if (x2 > ForestFire.width) {
-					x2 = ForestFire.width;
-				}
-				if (y1 < 0) {
-					y1 = 0;
-				}
-				if (y2 > ForestFire.height) {
-					y2 = ForestFire.height;
-				}
-
-				tempTreesA.clear();
-				int y = TreeGrouper.yBinarySearch(sortedTrees, y1);
-				int yEnd = TreeGrouper.yBinarySearch(sortedTrees, y2);
-
-				for (; y <= yEnd; y++) {
-					tempTreesA.add(sortedTrees[y]);
-				}
-				Collections.sort(tempTreesA, new TreeXComparator());
-
-				tempTreesB.clear();
-				int x = TreeGrouper.xBinarySearch(tempTreesA, x1);
-				int xEnd = TreeGrouper.xBinarySearch(tempTreesA, x2);
-
-				for (; x <= xEnd; x++) {
-					tempTreesB.add(tempTreesA.get(x));
-				}
-
-				for (int j = 0; j < tempTreesB.size(); j++) {
-					int originX = e.getX();
-					int originY = e.getY();
-					int nearbyX = tempTreesB.get(j).getX();
-					int nearbyY = tempTreesB.get(j).getY();
-
-					int value = (nearbyX - originX) * (nearbyX - originX) + (nearbyY - originY) * (nearbyY - originY);
-
-					if (value <= ForestFire.BURN_RADIUS_SQR) {
-						tempTreesB.get(j).setState(Tree.RED);
-
-						ignitedTrees.add(tempTreesB.get(j));
-					}
-				}
-			}
-		});
-
-		// Setup frame
-		frame.setTitle("Forest Fire by Peter \"Felix\" Nguyen");
-		frame.setSize(width + 30, height + 120);
-		frame.setMinimumSize(new Dimension(width + 30, height + 120));
-		frame.setLocationRelativeTo(null);
-		frame.setResizable(false);
-		frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-		frame.getContentPane().setLayout(new BoxLayout(frame.getContentPane(), BoxLayout.X_AXIS));
-		frame.getContentPane().setBackground(new Color(50,50,50));
-
-		
-		// Playback standard button group
-		JPanel groupPlayback = new JPanel(new FlowLayout(FlowLayout.LEFT));
-		groupPlayback.setBackground(new Color(215,199,151));
-		groupPlayback.setBorder(BorderFactory.createTitledBorder(BorderFactory.createLineBorder(Color.BLACK, 2), "Playback Controls"));
-		groupPlayback.add(jbPlay);
-		groupPlayback.add(jbPause);
-		groupPlayback.add(jbStop);
-		groupPlayback.add(jbReplay);
-		
-		// Simulation speed button group
-		JPanel groupSpeed = new JPanel(new FlowLayout(FlowLayout.LEFT));
-		groupSpeed.setBackground(new Color(215,199,151));
-		groupSpeed.setBorder(BorderFactory.createTitledBorder(BorderFactory.createLineBorder(Color.BLACK, 2), "Simulation Speed"));
-		groupSpeed.add(jbSlow);
-		groupSpeed.add(jbNormal);
-		groupSpeed.add(jbFast);
-		groupSpeed.add(jbFaster);
-		
-		// Configure button group
-		JPanel groupConfigure = new JPanel(new FlowLayout(FlowLayout.LEFT));
-		groupConfigure.setBackground(new Color(215,199,151));
-		groupConfigure.setBorder(BorderFactory.createTitledBorder(BorderFactory.createLineBorder(Color.BLACK, 2), "Configure..."));
-		groupConfigure.add(jbMap);
-		
-		// Button bar for user controls and settings
-		JPanel buttonBar = new JPanel(new FlowLayout(FlowLayout.LEFT));
-		buttonBar.setBackground(new Color(215,199,151));
-		buttonBar.setSize(new Dimension(width, 70));
-		buttonBar.setMinimumSize(new Dimension(width, 70));
-		buttonBar.setMaximumSize(new Dimension(width, 70));		
-		buttonBar.add(groupPlayback);
-		buttonBar.add(groupSpeed);
-		buttonBar.add(groupConfigure);
-		
-		// Container to lay out the map and button bar
-		JPanel fullInterface = new JPanel();
-		fullInterface.setBorder(BorderFactory.createLineBorder(Color.BLACK, 2));
-		fullInterface.setLayout(new BoxLayout(fullInterface, BoxLayout.Y_AXIS));
-		fullInterface.add(buttonBar);
-		fullInterface.add(forestFire);
-		
-		// Add components to frame
-		frame.add(Box.createHorizontalGlue());
-		frame.add(fullInterface);
-		frame.add(Box.createHorizontalGlue());
-
-		// Timer for animation and state change
-		timer = new Timer(150, forestFire);
-		timer.start();
-
-		frame.setVisible(true);
-	}
 
 	@Override
-	public void actionPerformed(ActionEvent e) {
-		if (tick < numTrees * 2) {
+	public void actionPerformed(ActionEvent e) {		
+		if (tick < numTrees * 2 && !paused) {
 			repaint();
-
+			//System.out.println("Normal Timer Running");
+			
 			Set<Tree> newlyIgnitedTrees = new HashSet<Tree>();
 			altSequenceCounter++;
 
@@ -688,5 +695,172 @@ public class ForestFire extends JPanel implements ActionListener {
 			// System.out.println("newlyIgnitedTrees size after clear: " + newlyIgnitedTrees.size());
 			tick++;
 		}
+	}
+	
+	class MapButtons extends JPanel {
+		
+		public MapButtons() {
+			jbPlay.setEnabled(false);
+			jbNormal.setEnabled(false);
+			
+			// Event handling START
+			jbPlay.addActionListener(new ActionListener() {
+				@Override
+				public void actionPerformed(ActionEvent arg0) {
+						paused = false;
+						
+						jbPlay.setEnabled(false);
+						jbPause.setEnabled(true);
+						jbStop.setEnabled(true);
+				}
+			});
+			
+			jbPause.addActionListener(new ActionListener() {
+				@Override
+				public void actionPerformed(ActionEvent arg0) {
+						paused = true;
+						
+						jbPlay.setEnabled(true);
+						jbPause.setEnabled(false);
+						jbStop.setEnabled(true);
+				}
+			});
+	
+			jbStop.addActionListener(new ActionListener() {
+				@Override
+				public void actionPerformed(ActionEvent arg0) {
+					replayMode = false;
+
+					tick = 0;
+					timerReplay.stop();
+					timerSimulation.start();
+
+					ignitedTrees.clear();
+				
+					for (Tree tree : sortedTrees) {
+						tree.resetState();
+					}
+
+					paused = false;
+					clickTrack.clear();
+					
+					jbPlay.setEnabled(false);
+					jbPause.setEnabled(true);
+					//jbStop.setEnabled(false);
+					jbReplay.setEnabled(true);
+				}
+			});
+	
+			jbReplay.addActionListener(new ActionListener() {
+				@Override
+				public void actionPerformed(ActionEvent arg0) {
+					replayMode = true;
+					
+					tick = 0;
+					timerSimulation.stop();
+					timerReplay.start();
+					
+					ignitedTrees.clear();
+				
+					for (Tree tree : sortedTrees) {
+						tree.resetState();
+					}
+
+					paused = false;
+					// add code to load replay script
+					jbPlay.setEnabled(true);
+					jbPause.setEnabled(true);
+					jbStop.setEnabled(true);
+					jbReplay.setEnabled(false);
+					}
+			});
+			
+			jbSlow.addActionListener(new ActionListener() {
+				@Override
+				public void actionPerformed(ActionEvent arg0) {
+					timerSimulation.setDelay((int)(simDelay / speedSlow));
+					timerReplay.setDelay((int)(simDelay / speedSlow));
+						jbSlow.setEnabled(false);
+						jbNormal.setEnabled(true);
+						jbFast.setEnabled(true);
+						jbFaster.setEnabled(true);
+				}
+			});
+			
+			jbNormal.addActionListener(new ActionListener() {
+				@Override
+				public void actionPerformed(ActionEvent arg0) {
+					timerSimulation.setDelay((int)(simDelay / speedNormal));
+					timerReplay.setDelay((int)(simDelay / speedNormal));
+					jbSlow.setEnabled(true);
+					jbNormal.setEnabled(false);
+					jbFast.setEnabled(true);
+					jbFaster.setEnabled(true);
+				}
+			});
+			
+			jbFast.addActionListener(new ActionListener() {
+				@Override
+				public void actionPerformed(ActionEvent arg0) {
+					timerSimulation.setDelay((int)(simDelay / speedFast));
+					timerReplay.setDelay((int)(simDelay / speedFast));
+					jbSlow.setEnabled(true);
+					jbNormal.setEnabled(true);
+					jbFast.setEnabled(false);
+					jbFaster.setEnabled(true);
+				}
+			});
+			
+			jbFaster.addActionListener(new ActionListener() {
+				@Override
+				public void actionPerformed(ActionEvent arg0) {
+					timerSimulation.setDelay((int)(simDelay / speedFaster));
+					timerReplay.setDelay((int)(simDelay / speedFaster));
+					jbSlow.setEnabled(true);
+					jbNormal.setEnabled(true);
+					jbFast.setEnabled(true);
+					jbFaster.setEnabled(false);
+				}
+			});
+			// Event handling END
+			
+			// Playback standard button group
+			JPanel groupPlayback = new JPanel(new FlowLayout(FlowLayout.LEFT));
+			groupPlayback.setBackground(new Color(215,199,151));
+			groupPlayback.setBorder(BorderFactory.createTitledBorder(BorderFactory.createLineBorder(Color.BLACK, 2), "Playback Controls"));
+			groupPlayback.add(jbPlay);
+			groupPlayback.add(jbPause);
+			groupPlayback.add(jbStop);
+			groupPlayback.add(jbReplay);
+			
+			// Simulation speed button group
+			JPanel groupSpeed = new JPanel(new FlowLayout(FlowLayout.LEFT));
+			groupSpeed.setBackground(new Color(215,199,151));
+			groupSpeed.setBorder(BorderFactory.createTitledBorder(BorderFactory.createLineBorder(Color.BLACK, 2), "Simulation Speed"));
+			groupSpeed.add(jbSlow);
+			groupSpeed.add(jbNormal);
+			groupSpeed.add(jbFast);
+			groupSpeed.add(jbFaster);
+			
+			// Configure button group
+			JPanel groupConfigure = new JPanel(new FlowLayout(FlowLayout.LEFT));
+			groupConfigure.setBackground(new Color(215,199,151));
+			groupConfigure.setBorder(BorderFactory.createTitledBorder(BorderFactory.createLineBorder(Color.BLACK, 2), "Configure..."));
+			groupConfigure.add(jbMap);
+			
+			// Button bar for user controls and settings
+			setLayout(new FlowLayout(FlowLayout.LEFT));
+			setBackground(new Color(215,199,151));
+			setSize(new Dimension(width, 70));
+			setMinimumSize(new Dimension(width, 70));
+			setMaximumSize(new Dimension(width, 70));		
+			add(groupPlayback);
+			add(groupSpeed);
+			add(groupConfigure);
+		}
+	}
+	
+	public MapButtons getMapButtons() {
+		return mapButtons;
 	}
 }

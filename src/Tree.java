@@ -13,6 +13,7 @@ public class Tree {
 	// Characteristics
 	public final int x;
 	public final int y;
+	public int initialFireIndex;
 	public int fireIndex;
 	
 	// States
@@ -41,7 +42,8 @@ public class Tree {
 	}
 	
 	public Tree(int x, int y) {
-		fireIndex = (int) (Math.random() * 3 + 1);
+		initialFireIndex = (int) (Math.random() * 3 + 1);
+		fireIndex = initialFireIndex;
 		state = GREEN;
 		
 		isHomogenous = false;
@@ -91,6 +93,11 @@ public class Tree {
 		}
 	}
 
+	public void resetState() {
+		this.state = GREEN;
+		fireIndex = initialFireIndex;
+	}
+	
 	public int getX() {
 		return x;
 	}

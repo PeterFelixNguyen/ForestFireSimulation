@@ -8,6 +8,7 @@ Copyright Peter "Felix" Nguyen and Emmanuel Medina Lopez
 2. [POSSIBLY FIXED] Sometimes trees are not cleared from ignitedTrees
 3. [FIXED] Sometimes, a tree positioned beside the northern edge of the map can not be ignited when clicked.
 4. Graphically, burnt tree trunks position are different from healthy tree trunks.
+5. Clicking to start a fire does not work correctly (does not logically trigger nearby trees in a logical way).
 
 # Issues
 1. Clicking needs to be more accurate. Should target nearest tree instead of trees within click radius.
