@@ -30,13 +30,15 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.Set;
-import java.util.Stack;
 
 import javax.imageio.ImageIO;
 import javax.swing.BorderFactory;
-import javax.swing.JButton;
 import javax.swing.JPanel;
 import javax.swing.Timer;
+
+import com.jd.swing.custom.component.button.ButtonType;
+import com.jd.swing.custom.component.button.StandardButton;
+import com.jd.swing.util.Theme;
 
 @SuppressWarnings("serial")
 public class ForestFire extends JPanel implements ActionListener {
@@ -128,15 +130,15 @@ public class ForestFire extends JPanel implements ActionListener {
 	int tick = 0;
 
 	// Playback buttons
-	static JButton jbPlay = new JButton("PLAY");
-	static JButton jbPause = new JButton("PAUSE");
-	static JButton jbStop = new JButton("STOP");
-	static JButton jbReplay = new JButton("REPLAY");
-	static JButton jbSlow = new JButton("0.5x");
-	static JButton jbNormal = new JButton("1.0x");
-	static JButton jbFast = new JButton("1.5x");
-	static JButton jbFaster = new JButton("2.0x");
-	static JButton jbMap = new JButton("MAP");
+	private StandardButton sbPlay = new StandardButton("PLAY", ButtonType.BUTTON_ROUNDED_RECTANGLUR, Theme.STANDARD_BLUEGREEN_THEME, Theme.STANDARD_PALEBROWN_THEME, Theme.STANDARD_BLACK_THEME);
+	private StandardButton sbPause = new StandardButton("PAUSE", ButtonType.BUTTON_ROUNDED_RECTANGLUR, Theme.STANDARD_BLUEGREEN_THEME, Theme.STANDARD_PALEBROWN_THEME, Theme.STANDARD_BLACK_THEME);
+	private StandardButton sbStop = new StandardButton("STOP", ButtonType.BUTTON_ROUNDED_RECTANGLUR, Theme.STANDARD_BLUEGREEN_THEME, Theme.STANDARD_PALEBROWN_THEME, Theme.STANDARD_BLACK_THEME);
+	private StandardButton sbReplay = new StandardButton("REPLAY", ButtonType.BUTTON_ROUNDED_RECTANGLUR, Theme.STANDARD_BLUEGREEN_THEME, Theme.STANDARD_PALEBROWN_THEME, Theme.STANDARD_BLACK_THEME);
+	private StandardButton sbSlow = new StandardButton("0.5x", ButtonType.BUTTON_ROUNDED_RECTANGLUR, Theme.STANDARD_BLUEGREEN_THEME, Theme.STANDARD_PALEBROWN_THEME, Theme.STANDARD_BLACK_THEME);
+	private StandardButton sbNormal = new StandardButton("1.0x", ButtonType.BUTTON_ROUNDED_RECTANGLUR, Theme.STANDARD_BLUEGREEN_THEME, Theme.STANDARD_PALEBROWN_THEME, Theme.STANDARD_BLACK_THEME);
+	private StandardButton sbFast = new StandardButton("1.5x", ButtonType.BUTTON_ROUNDED_RECTANGLUR, Theme.STANDARD_BLUEGREEN_THEME, Theme.STANDARD_PALEBROWN_THEME, Theme.STANDARD_BLACK_THEME);
+	private StandardButton sbFaster = new StandardButton("2.0x", ButtonType.BUTTON_ROUNDED_RECTANGLUR, Theme.STANDARD_BLUEGREEN_THEME, Theme.STANDARD_PALEBROWN_THEME, Theme.STANDARD_BLACK_THEME);
+	private StandardButton sbMap = new StandardButton("MAP", ButtonType.BUTTON_ROUNDED_RECTANGLUR, Theme.STANDARD_BLUEGREEN_THEME, Theme.STANDARD_PALEBROWN_THEME, Theme.STANDARD_BLACK_THEME);
 	
 	// Playback states
 	private static boolean paused = false;
@@ -146,16 +148,16 @@ public class ForestFire extends JPanel implements ActionListener {
 	private static final float speedNormal = 1.0f;
 	private static final float speedFast = 1.5f;
 	private static final float speedFaster = 2.0f;
-	public static int simDelay = 150;
+	public int simDelay = 150;
 	
-	// Replay track
-	private static ArrayList<ClickAction> clickTrack = new ArrayList<ClickAction>(); // for now
-	@SuppressWarnings("unused")
-	private static Stack<ClickAction> clickStack = new Stack<ClickAction>(); // future use
-	private static boolean replayMode = false;
+	// Replay track (considering using a Stack instead of an ArrayList)
+	private ArrayList<ClickAction> clickHistory = new ArrayList<ClickAction>();
+	private ArrayList<ClickAction> clickHistoryStack = new ArrayList<ClickAction>();
+	
+	private boolean replayMode = false;
 	
 	// Subcomponents
-	private static MapButtons mapButtons;
+	private MapButtons mapButtons;
 	
 	public ForestFire() {
 		// Select resolution name
@@ -282,9 +284,11 @@ public class ForestFire extends JPanel implements ActionListener {
 			@Override
 			public void mousePressed(MouseEvent e) {
 				if (!replayMode) {
-					clickTrack.add(new ClickAction(e.getX(), e.getY(), tick));
-					
-					clickFunction(e.getX(), e.getY());
+					boolean treeClicked = clickFunction(e.getX(), e.getY());
+							
+					if (treeClicked) {
+						clickHistory.add(new ClickAction(e.getX(), e.getY(), tick));						
+					}
 				}
 			}
 
@@ -311,10 +315,10 @@ public class ForestFire extends JPanel implements ActionListener {
 		setMinimumSize(fixedSize);
 		setMaximumSize(fixedSize);
 		
-		// Timer for animation and state change
+		// Timer for simulation
 		timerSimulation = new Timer(simDelay, this);
-		timerSimulation.start();
 		
+		// Timer for replay (should consider using ONE timer)
 		timerReplay = new Timer(simDelay, new ActionListener() {
 			
 			@Override
@@ -322,15 +326,16 @@ public class ForestFire extends JPanel implements ActionListener {
 				if (tick < numTrees * 2 && !paused) {
 					repaint();
 					//System.out.println("Replay Timer Running");
+										
+					while (clickHistoryStack.size() > 0 && tick == clickHistoryStack.get(0).getTick()) {
+						int xClicked = clickHistoryStack.get(0).getX();
+						int yClicked = clickHistoryStack.get(0).getY();
+						clickFunction(xClicked, yClicked);
+						clickHistoryStack.remove(0);
+						System.out.print("Pop");
+						System.out.println(" -> size: " + clickHistoryStack.size());
+					}				
 					
-					if (clickTrack.size() > 0) {
-						if (tick == clickTrack.get(0).getTick()) {
-							int xClicked = clickTrack.get(0).getX();
-							int yClicked = clickTrack.get(0).getY();
-							clickFunction(xClicked, yClicked);
-							clickTrack.remove(0);
-						}				
-					}
 					Set<Tree> newlyIgnitedTrees = new HashSet<Tree>();
 					altSequenceCounter++;
 
@@ -371,8 +376,8 @@ public class ForestFire extends JPanel implements ActionListener {
 		mapButtons = new MapButtons();
 	}
 
-	public void clickFunction(int xClick, int yClick) {
-		System.out.println("Clicked: (" + xClick + "," + yClick + ")");
+	public boolean clickFunction(int xClick, int yClick) {
+		//System.out.println("Clicked: (" + xClick + "," + yClick + ")");
 		int x1 = xClick - ForestFire.CLICK_RADIUS / 2;
 		int x2 = xClick + ForestFire.CLICK_RADIUS / 2;
 		int y1 = yClick - ForestFire.CLICK_RADIUS / 2;
@@ -408,6 +413,8 @@ public class ForestFire extends JPanel implements ActionListener {
 			tempTreesB.add(tempTreesA.get(x));
 		}
 
+		boolean fireStarted = false;
+		
 		for (int j = 0; j < tempTreesB.size(); j++) {
 			int originX = xClick;
 			int originY = yClick;
@@ -417,11 +424,23 @@ public class ForestFire extends JPanel implements ActionListener {
 			int value = (nearbyX - originX) * (nearbyX - originX) + (nearbyY - originY) * (nearbyY - originY);
 
 			if (value <= ForestFire.BURN_RADIUS_SQR) {
+				if (!replayMode && !timerSimulation.isRunning()) {
+					timerSimulation.start();
+					sbPause.setEnabled(true);
+					sbStop.setEnabled(true);
+					sbReplay.setEnabled(true);
+					System.out.println("trigger once");
+					clickHistory.clear();
+				}
+				
 				tempTreesB.get(j).setState(Tree.RED);
-
 				ignitedTrees.add(tempTreesB.get(j));
+				
+				fireStarted = true;
 			}
 		}
+		
+		return fireStarted;
 	}
 
 	private VolatileImage createVolatileImage(int width, int height, int transparency) {
@@ -700,41 +719,57 @@ public class ForestFire extends JPanel implements ActionListener {
 	class MapButtons extends JPanel {
 		
 		public MapButtons() {
-			jbPlay.setEnabled(false);
-			jbNormal.setEnabled(false);
+//			UIManager.getDefaults().put("Button.disabledText", Color.BLACK);
+//			UIManager.getDefaults().put("Button.disabledForeground", Color.BLACK);
+
+			sbPlay.setEnabled(false);
+			sbPause.setEnabled(false);
+			sbStop.setEnabled(false);
+			sbReplay.setEnabled(false);
+			sbNormal.setEnabled(false);
+			
+			sbPlay.setFocusPainted(false);
+			sbPause.setFocusPainted(false);
+			sbStop.setFocusPainted(false);
+			sbReplay.setFocusPainted(false);
+			sbSlow.setFocusPainted(false);
+			sbNormal.setFocusPainted(false);
+			sbFast.setFocusPainted(false);
+			sbFaster.setFocusPainted(false);
+			
 			
 			// Event handling START
-			jbPlay.addActionListener(new ActionListener() {
+			sbPlay.addActionListener(new ActionListener() {
 				@Override
 				public void actionPerformed(ActionEvent arg0) {
 						paused = false;
 						
-						jbPlay.setEnabled(false);
-						jbPause.setEnabled(true);
-						jbStop.setEnabled(true);
+						sbPlay.setEnabled(false);
+						sbPause.setEnabled(true);
+						sbStop.setEnabled(true);
 				}
 			});
 			
-			jbPause.addActionListener(new ActionListener() {
+			sbPause.addActionListener(new ActionListener() {
 				@Override
 				public void actionPerformed(ActionEvent arg0) {
 						paused = true;
 						
-						jbPlay.setEnabled(true);
-						jbPause.setEnabled(false);
-						jbStop.setEnabled(true);
+						sbPlay.setEnabled(true);
+						sbPause.setEnabled(false);
+						sbStop.setEnabled(true);
 				}
 			});
-	
-			jbStop.addActionListener(new ActionListener() {
-				@Override
-				public void actionPerformed(ActionEvent arg0) {
-					replayMode = false;
 
+			sbStop.addActionListener(new ActionListener() {
+				@Override
+				public void actionPerformed(ActionEvent arg0) {					
+					replayMode = false;
+					
 					tick = 0;
 					timerReplay.stop();
-					timerSimulation.start();
-
+					timerSimulation.stop();
+					
 					ignitedTrees.clear();
 				
 					for (Tree tree : sortedTrees) {
@@ -742,19 +777,26 @@ public class ForestFire extends JPanel implements ActionListener {
 					}
 
 					paused = false;
-					clickTrack.clear();
 					
-					jbPlay.setEnabled(false);
-					jbPause.setEnabled(true);
-					//jbStop.setEnabled(false);
-					jbReplay.setEnabled(true);
+					sbPlay.setEnabled(false);
+					sbPause.setEnabled(false);
+					sbStop.setEnabled(false);
+					sbReplay.setEnabled(true);
+					
+					ForestFire.this.repaint();
 				}
 			});
 	
-			jbReplay.addActionListener(new ActionListener() {
+			sbReplay.addActionListener(new ActionListener() {
 				@Override
 				public void actionPerformed(ActionEvent arg0) {
 					replayMode = true;
+					
+					clickHistoryStack.clear();
+					for (int i = 0; i < clickHistory.size(); i++) {
+						clickHistoryStack.add(clickHistory.get(i));
+					}
+					System.out.println("Count: " + clickHistory.size());
 					
 					tick = 0;
 					timerSimulation.stop();
@@ -768,58 +810,58 @@ public class ForestFire extends JPanel implements ActionListener {
 
 					paused = false;
 					// add code to load replay script
-					jbPlay.setEnabled(true);
-					jbPause.setEnabled(true);
-					jbStop.setEnabled(true);
-					jbReplay.setEnabled(false);
+					sbPlay.setEnabled(true);
+					sbPause.setEnabled(true);
+					sbStop.setEnabled(true);
+					sbReplay.setEnabled(false);
 					}
 			});
 			
-			jbSlow.addActionListener(new ActionListener() {
+			sbSlow.addActionListener(new ActionListener() {
 				@Override
 				public void actionPerformed(ActionEvent arg0) {
 					timerSimulation.setDelay((int)(simDelay / speedSlow));
 					timerReplay.setDelay((int)(simDelay / speedSlow));
-						jbSlow.setEnabled(false);
-						jbNormal.setEnabled(true);
-						jbFast.setEnabled(true);
-						jbFaster.setEnabled(true);
+						sbSlow.setEnabled(false);
+						sbNormal.setEnabled(true);
+						sbFast.setEnabled(true);
+						sbFaster.setEnabled(true);
 				}
 			});
 			
-			jbNormal.addActionListener(new ActionListener() {
+			sbNormal.addActionListener(new ActionListener() {
 				@Override
 				public void actionPerformed(ActionEvent arg0) {
 					timerSimulation.setDelay((int)(simDelay / speedNormal));
 					timerReplay.setDelay((int)(simDelay / speedNormal));
-					jbSlow.setEnabled(true);
-					jbNormal.setEnabled(false);
-					jbFast.setEnabled(true);
-					jbFaster.setEnabled(true);
+					sbSlow.setEnabled(true);
+					sbNormal.setEnabled(false);
+					sbFast.setEnabled(true);
+					sbFaster.setEnabled(true);
 				}
 			});
 			
-			jbFast.addActionListener(new ActionListener() {
+			sbFast.addActionListener(new ActionListener() {
 				@Override
 				public void actionPerformed(ActionEvent arg0) {
 					timerSimulation.setDelay((int)(simDelay / speedFast));
 					timerReplay.setDelay((int)(simDelay / speedFast));
-					jbSlow.setEnabled(true);
-					jbNormal.setEnabled(true);
-					jbFast.setEnabled(false);
-					jbFaster.setEnabled(true);
+					sbSlow.setEnabled(true);
+					sbNormal.setEnabled(true);
+					sbFast.setEnabled(false);
+					sbFaster.setEnabled(true);
 				}
 			});
 			
-			jbFaster.addActionListener(new ActionListener() {
+			sbFaster.addActionListener(new ActionListener() {
 				@Override
 				public void actionPerformed(ActionEvent arg0) {
 					timerSimulation.setDelay((int)(simDelay / speedFaster));
 					timerReplay.setDelay((int)(simDelay / speedFaster));
-					jbSlow.setEnabled(true);
-					jbNormal.setEnabled(true);
-					jbFast.setEnabled(true);
-					jbFaster.setEnabled(false);
+					sbSlow.setEnabled(true);
+					sbNormal.setEnabled(true);
+					sbFast.setEnabled(true);
+					sbFaster.setEnabled(false);
 				}
 			});
 			// Event handling END
@@ -828,25 +870,25 @@ public class ForestFire extends JPanel implements ActionListener {
 			JPanel groupPlayback = new JPanel(new FlowLayout(FlowLayout.LEFT));
 			groupPlayback.setBackground(new Color(215,199,151));
 			groupPlayback.setBorder(BorderFactory.createTitledBorder(BorderFactory.createLineBorder(Color.BLACK, 2), "Playback Controls"));
-			groupPlayback.add(jbPlay);
-			groupPlayback.add(jbPause);
-			groupPlayback.add(jbStop);
-			groupPlayback.add(jbReplay);
+			groupPlayback.add(sbPlay);
+			groupPlayback.add(sbPause);
+			groupPlayback.add(sbStop);
+			groupPlayback.add(sbReplay);
 			
 			// Simulation speed button group
 			JPanel groupSpeed = new JPanel(new FlowLayout(FlowLayout.LEFT));
 			groupSpeed.setBackground(new Color(215,199,151));
 			groupSpeed.setBorder(BorderFactory.createTitledBorder(BorderFactory.createLineBorder(Color.BLACK, 2), "Simulation Speed"));
-			groupSpeed.add(jbSlow);
-			groupSpeed.add(jbNormal);
-			groupSpeed.add(jbFast);
-			groupSpeed.add(jbFaster);
+			groupSpeed.add(sbSlow);
+			groupSpeed.add(sbNormal);
+			groupSpeed.add(sbFast);
+			groupSpeed.add(sbFaster);
 			
 			// Configure button group
 			JPanel groupConfigure = new JPanel(new FlowLayout(FlowLayout.LEFT));
 			groupConfigure.setBackground(new Color(215,199,151));
 			groupConfigure.setBorder(BorderFactory.createTitledBorder(BorderFactory.createLineBorder(Color.BLACK, 2), "Configure..."));
-			groupConfigure.add(jbMap);
+			groupConfigure.add(sbMap);
 			
 			// Button bar for user controls and settings
 			setLayout(new FlowLayout(FlowLayout.LEFT));
