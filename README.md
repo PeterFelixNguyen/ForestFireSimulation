@@ -3,6 +3,9 @@ A forest fire simulation with 2D graphics and random tree generation.
 
 Copyright Peter "Felix" Nguyen and Emmanuel Medina Lopez
 
+#Current Features
+1. Can simulate 50,000 trees.
+
 # Bugs
 1. [FIXED] ignited and newlyIgnitedTrees are added even though they are not on fire. Happens when user clicks on an area that has trees that have already been burnt.
 2. [POSSIBLY FIXED] Sometimes trees are not cleared from ignitedTrees
@@ -27,6 +30,11 @@ Links that helped me6. Rain, wind, lightning, and weather.
 10. Dynamic weather (rng or God-mode).
 11. Map editor and map loader.
 12. [DONE] If burning and nearbyTrees added, remove from list of burning trees (or have two sets of burning trees: new burning trees and old burning trees.
+13. Add a skip button to skip to next instance of a click (Replay Mode)
+14. Add seek feature and a timer display
+15. Status of map: remaining trees, number of trees on fire, number of trees on map, dead trees.
+15. [In-progress] allow unlimited replay of the same replay
+16. Save map replays (requires original map).
 
 # Links that helped me
 1. http://content.gpwiki.org/index.php/Java:Tutorials:VolatileImage
