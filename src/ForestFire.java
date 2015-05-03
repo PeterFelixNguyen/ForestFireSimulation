@@ -10,18 +10,24 @@ import java.awt.BasicStroke;
 import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.FlowLayout;
+import java.awt.GradientPaint;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
 import java.awt.GraphicsConfiguration;
+import java.awt.GraphicsDevice;
 import java.awt.GraphicsEnvironment;
+import java.awt.GridLayout;
 import java.awt.Polygon;
 import java.awt.RenderingHints;
 import java.awt.Transparency;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.awt.event.MouseListener;
+import java.awt.event.MouseMotionListener;
 import java.awt.geom.Line2D;
+import java.awt.geom.Rectangle2D;
 import java.awt.image.BufferedImage;
 import java.awt.image.VolatileImage;
 import java.io.IOException;
@@ -33,6 +39,8 @@ import java.util.Set;
 
 import javax.imageio.ImageIO;
 import javax.swing.BorderFactory;
+import javax.swing.JComponent;
+import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.Timer;
 
@@ -47,6 +55,7 @@ public class ForestFire extends JPanel implements ActionListener {
 	private final static String RESOLUTION_WSVGA = "1024x600";
 	private final static String RESOLUTION_ASUS = "1800x900";
 	private final static String RESOLUTION_ALIEN = "1200x600";
+	private final static String RESOLUTION_DEVICE = "DEVICE";
 	private final static int WIDTH_DEFAULT = 1200;
 	private final static int HEIGHT_DEFAULT = 600;
 	public final static int WIDTH_TEST = 1200;
@@ -127,8 +136,10 @@ public class ForestFire extends JPanel implements ActionListener {
 	private int altSequenceCounter = 0;
 
 	// Position tracker
-	int tick = 0;
-
+	private int tick = 0;
+	//private int tickSelected = 0;
+	private int replayDuration = 0;
+	
 	// Playback buttons
 	private StandardButton sbPlay = new StandardButton("PLAY", ButtonType.BUTTON_ROUNDED_RECTANGLUR, Theme.STANDARD_BLUEGREEN_THEME, Theme.STANDARD_PALEBROWN_THEME, Theme.STANDARD_BLACK_THEME);
 	private StandardButton sbPause = new StandardButton("PAUSE", ButtonType.BUTTON_ROUNDED_RECTANGLUR, Theme.STANDARD_BLUEGREEN_THEME, Theme.STANDARD_PALEBROWN_THEME, Theme.STANDARD_BLACK_THEME);
@@ -158,10 +169,17 @@ public class ForestFire extends JPanel implements ActionListener {
 	
 	// Subcomponents
 	private MapButtons mapButtons;
+	private ReplaySlider replaySlider;
 	
 	public ForestFire() {
+		// Get device resolution
+		GraphicsDevice gd = GraphicsEnvironment.getLocalGraphicsEnvironment().getDefaultScreenDevice();
+		int screenWidth = gd.getDisplayMode().getWidth();
+		int screenHeight = gd.getDisplayMode().getHeight();
+		System.out.println("Device resolution = " + screenWidth + "x" + screenHeight);
+		
 		// Select resolution name
-		resolution = RESOLUTION_ALIEN;
+		resolution = RESOLUTION_WVGA;
 
 		// Configure map resolution
 		if (resolution == RESOLUTION_WVGA) {
@@ -176,8 +194,19 @@ public class ForestFire extends JPanel implements ActionListener {
 		} else if (resolution == RESOLUTION_ALIEN) {
 			width = 1200;
 			height = 600;
+		} else if (resolution == RESOLUTION_DEVICE) {
+			width = screenWidth;
+			height = screenHeight;
 		}
-
+		
+		// prevent width and height from being negative
+		if (width > 100) {
+			width = width - 100;
+		}
+		if (height > 300) {
+			height = height - 300;
+		}
+		
 		// numTrees = x-percentage of total pixels
 		numTrees = (int) (TREE_FACTOR_MEDIUM * (width * height));
 		System.out.println("numTrees = " + numTrees);
@@ -323,18 +352,25 @@ public class ForestFire extends JPanel implements ActionListener {
 			
 			@Override
 			public void actionPerformed(ActionEvent e) {
-				if (tick < numTrees * 2 && !paused) {
+				if (tick < 10000 && !paused) {
+					System.out.println("tick CHECK: " + tick);
+					System.out.println("replayDuration CHECK: " + replayDuration);
+					
+					getReplaySlider().setPercentPosition(tick, replayDuration);
+
 					repaint();
 					//System.out.println("Replay Timer Running");
-										
+					
 					while (clickHistoryStack.size() > 0 && tick == clickHistoryStack.get(0).getTick()) {
 						int xClicked = clickHistoryStack.get(0).getX();
 						int yClicked = clickHistoryStack.get(0).getY();
 						clickFunction(xClicked, yClicked);
 						clickHistoryStack.remove(0);
-						System.out.print("Pop");
-						System.out.println(" -> size: " + clickHistoryStack.size());
+//						System.out.print("Pop (Pre-seek)");
+//						System.out.print(" -> size: " + clickHistoryStack.size());
+//						System.out.println(" (Tick = " + tick + ")");
 					}				
+					
 					
 					Set<Tree> newlyIgnitedTrees = new HashSet<Tree>();
 					altSequenceCounter++;
@@ -367,6 +403,7 @@ public class ForestFire extends JPanel implements ActionListener {
 					}
 					newlyIgnitedTrees.clear();
 					// System.out.println("newlyIgnitedTrees size after clear: " + newlyIgnitedTrees.size());
+					
 					tick++;
 				}
 			}
@@ -374,10 +411,12 @@ public class ForestFire extends JPanel implements ActionListener {
 		
 		// Subcomponents
 		mapButtons = new MapButtons();
+		replaySlider = new ReplaySlider();
 	}
 
 	public boolean clickFunction(int xClick, int yClick) {
-		//System.out.println("Clicked: (" + xClick + "," + yClick + ")");
+//		System.out.println("Clicked: (" + xClick + "," + yClick + ")");
+//		System.out.println("Tick at Click: " + tick);
 		int x1 = xClick - ForestFire.CLICK_RADIUS / 2;
 		int x2 = xClick + ForestFire.CLICK_RADIUS / 2;
 		int y1 = yClick - ForestFire.CLICK_RADIUS / 2;
@@ -425,12 +464,13 @@ public class ForestFire extends JPanel implements ActionListener {
 
 			if (value <= ForestFire.BURN_RADIUS_SQR) {
 				if (!replayMode && !timerSimulation.isRunning()) {
+					tick = 0;
 					timerSimulation.start();
 					sbPause.setEnabled(true);
 					sbStop.setEnabled(true);
 					sbReplay.setEnabled(true);
-					System.out.println("trigger once");
 					clickHistory.clear();
+					System.out.println("clear");
 				}
 				
 				tempTreesB.get(j).setState(Tree.RED);
@@ -608,6 +648,8 @@ public class ForestFire extends JPanel implements ActionListener {
 	
 	@Override
 	public void paintComponent(Graphics g) {
+		super.paintComponent(g);
+				
 		Graphics2D g2 = (Graphics2D) g;
 
 		// Draw land
@@ -640,6 +682,8 @@ public class ForestFire extends JPanel implements ActionListener {
 				if (sortedTrees[i].fireIndex < ANIMATION_LENGTH - 1) {
 					sortedTrees[i].tick();
 				}
+//				System.out.println("RED");
+
 				g2.drawImage(vfireAnimation[sortedTrees[i].fireIndex], x, y - 6, this);
 			}
 		}
@@ -677,7 +721,7 @@ public class ForestFire extends JPanel implements ActionListener {
 
 	@Override
 	public void actionPerformed(ActionEvent e) {		
-		if (tick < numTrees * 2 && !paused) {
+		if (tick < 10000 && !paused) {
 			repaint();
 			//System.out.println("Normal Timer Running");
 			
@@ -718,7 +762,7 @@ public class ForestFire extends JPanel implements ActionListener {
 	
 	class MapButtons extends JPanel {
 		
-		public MapButtons() {
+		private MapButtons() {
 //			UIManager.getDefaults().put("Button.disabledText", Color.BLACK);
 //			UIManager.getDefaults().put("Button.disabledForeground", Color.BLACK);
 
@@ -766,7 +810,9 @@ public class ForestFire extends JPanel implements ActionListener {
 				public void actionPerformed(ActionEvent arg0) {					
 					replayMode = false;
 					
-					tick = 0;
+					replayDuration = tick;
+					System.out.println("replayDuration STOP: " + replayDuration);
+
 					timerReplay.stop();
 					timerSimulation.stop();
 					
@@ -784,6 +830,7 @@ public class ForestFire extends JPanel implements ActionListener {
 					sbReplay.setEnabled(true);
 					
 					ForestFire.this.repaint();
+					getReplaySlider().repaint();
 				}
 			});
 	
@@ -796,8 +843,11 @@ public class ForestFire extends JPanel implements ActionListener {
 					for (int i = 0; i < clickHistory.size(); i++) {
 						clickHistoryStack.add(clickHistory.get(i));
 					}
-					System.out.println("Count: " + clickHistory.size());
-					
+//					System.out.println("Count: " + clickHistory.size());
+
+					// Problem is here (divide by zero)
+					replayDuration = tick;
+					System.out.println("replayDuration REPLAY: " + replayDuration);
 					tick = 0;
 					timerSimulation.stop();
 					timerReplay.start();
@@ -809,7 +859,7 @@ public class ForestFire extends JPanel implements ActionListener {
 					}
 
 					paused = false;
-					// add code to load replay script
+					
 					sbPlay.setEnabled(true);
 					sbPause.setEnabled(true);
 					sbStop.setEnabled(true);
@@ -904,5 +954,197 @@ public class ForestFire extends JPanel implements ActionListener {
 	
 	public MapButtons getMapButtons() {
 		return mapButtons;
+	}
+	
+	class ReplaySlider extends JPanel {
+		private int xPosition = 0;
+		private int percentPosition = 0;
+		// Recommended: combination of both colors instead of just one
+		private Color lightBluePosition = new Color(131,208,201);
+		private Color lightGreenPosition = new Color(90,170,90);
+		private JLabel trackSlider;
+
+		private ReplaySlider() {
+			trackSlider = new JLabel();
+						
+			add(trackSlider);
+			setLayout(new GridLayout());
+			
+			trackSlider.addMouseListener(new MouseAdapter() {
+				
+				@Override
+				public void mousePressed(MouseEvent e) {
+//					System.out.println("mousePressed");
+//					System.out.println("xPosition: " + e.getX());
+//					System.out.println("xWidth: " + ((JComponent) e.getSource()).getWidth());
+					if (replayMode) {
+						paused = true;
+												
+						xPosition = e.getX();
+						int xWidth = ((JComponent) e.getSource()).getWidth();
+						percentPosition = (int) (100 * (float) xPosition / (float) xWidth);
+						
+						if (percentPosition < 0) {
+							percentPosition = 0;
+						} else if (percentPosition > 100) {
+							percentPosition = 100;
+						}
+						
+						tick = (int) (((float) percentPosition / 100f) * replayDuration);
+						
+						repaint();
+					}
+				}
+				
+				@Override
+				public void mouseReleased(MouseEvent e) {
+					if (replayMode) {
+						rebuildStates();
+						paused = false;
+					}
+				}
+			});
+			
+			trackSlider.addMouseMotionListener(new MouseMotionListener() {
+				
+				@Override
+				public void mouseMoved(MouseEvent e) {
+				}
+				
+				@Override
+				public void mouseDragged(MouseEvent e) {
+					// Be careful e.getX() can be less than zero or greater than width
+//					System.out.println("mouseDragged");
+//					System.out.println("xPosition: " + e.getX());
+//					System.out.println("xWidth: " + ((JComponent) e.getSource()).getWidth());
+					if (replayMode) {
+						paused = true;
+						
+						xPosition = e.getX();
+						int xWidth = ((JComponent) e.getSource()).getWidth();
+						percentPosition = (int) (100 * (float) xPosition / (float) xWidth);
+						
+						if (percentPosition < 0) {
+							percentPosition = 0;
+						} else if (percentPosition > 100) {
+							percentPosition = 100;
+						}
+							
+						tick = (int) (((float) percentPosition / 100f) * replayDuration);
+						
+						repaint();
+					}
+				}
+			});
+			
+			setBackground(new Color(215,199,151));
+			setSize(new Dimension(width, 20));
+			setMinimumSize(new Dimension(width, 20));
+			setMaximumSize(new Dimension(width, 20));		
+		}
+		
+		@Override
+		public void paintComponent(Graphics g) {
+			super.paintComponent(g);
+									
+			if (replayMode) {
+				trackSlider.setText(" Replay progress: " + percentPosition + "%");
+				Graphics2D g2d = (Graphics2D) g;
+				GradientPaint upperGradient = new GradientPaint(0, 0, Color.WHITE, 0, this.getHeight()/2, lightBluePosition);
+				GradientPaint lowerGradient = new GradientPaint(0, this.getHeight()/2, lightGreenPosition, 0, this.getHeight(), Color.WHITE);
+
+				g2d.setPaint(upperGradient);
+				g2d.fill(new Rectangle2D.Double(0, 0, xPosition, this.getHeight()/2));
+				g2d.setPaint(lowerGradient);
+				g2d.fill(new Rectangle2D.Double(0, this.getHeight()/2, xPosition, this.getHeight()));
+			} else {
+				super.paintComponent(g);
+			}
+		}
+		
+		public void doSamething() {
+			// move event handling code here
+		}
+		
+		public void rebuildStates() {
+
+			ignitedTrees.clear();
+			
+			for (Tree tree : sortedTrees) {
+				tree.resetState();
+			}
+			
+			int replayTick = 0;
+
+			clickHistoryStack.clear();
+			for (int i = 0; i < clickHistory.size(); i++) {
+				clickHistoryStack.add(clickHistory.get(i));
+			}
+			
+			while (replayTick <= tick) {	
+				
+				for (int i = 0; i < numTrees; i++) {
+					// Fire animation (not drawn)
+					if (sortedTrees[i].getState() == Tree.RED) {
+							if (sortedTrees[i].fireIndex < ANIMATION_LENGTH - 1) {
+								sortedTrees[i].tick();
+							}
+						}
+				}
+				
+				while (clickHistoryStack.size() > 0 && replayTick == clickHistoryStack.get(0).getTick()) {
+					int xClicked = clickHistoryStack.get(0).getX();
+					int yClicked = clickHistoryStack.get(0).getY();
+					clickFunction(xClicked, yClicked);
+					clickHistoryStack.remove(0);
+//					System.out.print("Pop (Post-seek)");
+//					System.out.print(" -> size: " + clickHistoryStack.size());
+//					System.out.println(" (Tick = " + replayTick + ")");
+				}				
+				
+				Set<Tree> newlyIgnitedTrees = new HashSet<Tree>();
+				altSequenceCounter++;
+
+				if (altSequenceCounter % 5 == 0) {
+					altSequenceCounter = 0;
+					int sizeBurning = ignitedTrees.size();
+					Tree[] ignitedTreesArray = (Tree[]) ignitedTrees.toArray(new Tree[sizeBurning]);
+					for (int i = 0; i < sizeBurning; i++) {
+						int nearbySize = ignitedTreesArray[i].getNearbyTrees().size();
+						Tree[] nearbyTrees = (Tree[]) ignitedTreesArray[i].getNearbyTrees().toArray(new Tree[nearbySize]);
+
+						for (int j = 0; j < nearbyTrees.length; j++) {
+							if (nearbyTrees[j].getState() == Tree.GREEN) {
+								newlyIgnitedTrees.add(nearbyTrees[j]);
+							}
+							nearbyTrees[j].setState(Tree.RED);
+						}
+					}
+
+					ignitedTrees.clear();
+
+					for (Tree tree : newlyIgnitedTrees) {
+						ignitedTrees.add(tree);
+					}
+
+				}
+				newlyIgnitedTrees.clear();
+				replayTick++;
+			}
+		}
+		
+		@Override
+		public void repaint() {
+			super.repaint();
+		}
+		
+		public void setPercentPosition(int tick, int replayDuration) {
+			percentPosition = (int) (100 * (float) tick / (float) replayDuration);
+			repaint();
+		}
+	}
+	
+	public ReplaySlider getReplaySlider() {
+		return replaySlider;
 	}
 }
