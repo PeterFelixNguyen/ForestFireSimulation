@@ -353,13 +353,10 @@ public class ForestFire extends JPanel implements ActionListener {
 			@Override
 			public void actionPerformed(ActionEvent e) {
 				if (tick < 10000 && !paused) {
-					System.out.println("tick CHECK: " + tick);
-					System.out.println("replayDuration CHECK: " + replayDuration);
 					
 					getReplaySlider().setPercentPosition(tick, replayDuration);
 
 					repaint();
-					//System.out.println("Replay Timer Running");
 					
 					while (clickHistoryStack.size() > 0 && tick == clickHistoryStack.get(0).getTick()) {
 						int xClicked = clickHistoryStack.get(0).getX();
@@ -470,7 +467,6 @@ public class ForestFire extends JPanel implements ActionListener {
 					sbStop.setEnabled(true);
 					sbReplay.setEnabled(true);
 					clickHistory.clear();
-					System.out.println("clear");
 				}
 				
 				tempTreesB.get(j).setState(Tree.RED);
@@ -682,7 +678,6 @@ public class ForestFire extends JPanel implements ActionListener {
 				if (sortedTrees[i].fireIndex < ANIMATION_LENGTH - 1) {
 					sortedTrees[i].tick();
 				}
-//				System.out.println("RED");
 
 				g2.drawImage(vfireAnimation[sortedTrees[i].fireIndex], x, y - 6, this);
 			}
@@ -723,7 +718,6 @@ public class ForestFire extends JPanel implements ActionListener {
 	public void actionPerformed(ActionEvent e) {		
 		if (tick < 10000 && !paused) {
 			repaint();
-			//System.out.println("Normal Timer Running");
 			
 			Set<Tree> newlyIgnitedTrees = new HashSet<Tree>();
 			altSequenceCounter++;
@@ -808,11 +802,14 @@ public class ForestFire extends JPanel implements ActionListener {
 			sbStop.addActionListener(new ActionListener() {
 				@Override
 				public void actionPerformed(ActionEvent arg0) {					
-					replayMode = false;
+					if (!replayMode) {
+						replayDuration = tick;
+					}
 					
-					replayDuration = tick;
-					System.out.println("replayDuration STOP: " + replayDuration);
-
+					if (replayMode) {
+						replayMode = false;
+					}
+					
 					timerReplay.stop();
 					timerSimulation.stop();
 					
@@ -837,18 +834,22 @@ public class ForestFire extends JPanel implements ActionListener {
 			sbReplay.addActionListener(new ActionListener() {
 				@Override
 				public void actionPerformed(ActionEvent arg0) {
-					replayMode = true;
 					
 					clickHistoryStack.clear();
 					for (int i = 0; i < clickHistory.size(); i++) {
 						clickHistoryStack.add(clickHistory.get(i));
 					}
-//					System.out.println("Count: " + clickHistory.size());
 
-					// Problem is here (divide by zero)
-					replayDuration = tick;
+					if (timerSimulation.isRunning() && !timerReplay.isRunning()) {
+						replayDuration = tick;						
+					}
+						
 					System.out.println("replayDuration REPLAY: " + replayDuration);
+
+					replayMode = true;
+					
 					tick = 0;
+					
 					timerSimulation.stop();
 					timerReplay.start();
 					
@@ -1058,6 +1059,7 @@ public class ForestFire extends JPanel implements ActionListener {
 				g2d.setPaint(lowerGradient);
 				g2d.fill(new Rectangle2D.Double(0, this.getHeight()/2, xPosition, this.getHeight()));
 			} else {
+				trackSlider.setText("");
 				super.paintComponent(g);
 			}
 		}
@@ -1140,6 +1142,12 @@ public class ForestFire extends JPanel implements ActionListener {
 		
 		public void setPercentPosition(int tick, int replayDuration) {
 			percentPosition = (int) (100 * (float) tick / (float) replayDuration);
+			xPosition = (int) (((float) percentPosition / 100f) * trackSlider.getWidth());
+
+			if (xPosition > trackSlider.getWidth()) {
+				xPosition = trackSlider.getWidth();
+			}
+
 			repaint();
 		}
 	}
