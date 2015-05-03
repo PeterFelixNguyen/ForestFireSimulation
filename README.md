@@ -6,6 +6,9 @@ Copyright Peter "Felix" Nguyen and Emmanuel Medina Lopez
 #Current Features
 1. Can simulate 50,000 trees.
 
+# Notes
+1. The ReplaySlider is partially working, but it is not 100% completed.
+
 # Bugs
 1. [FIXED] ignited and newlyIgnitedTrees are added even though they are not on fire. Happens when user clicks on an area that has trees that have already been burnt.
 2. [POSSIBLY FIXED] Sometimes trees are not cleared from ignitedTrees
@@ -37,6 +40,11 @@ Links that helped me6. Rain, wind, lightning, and weather.
 16. Save map replays (requires original map).
 
 # Links that helped me
+
+## Hardware accelerated graphics
 1. http://content.gpwiki.org/index.php/Java:Tutorials:VolatileImage
 2. https://docs.oracle.com/javase/8/docs/api/java/awt/image/VolatileImage.html
 3. https://docs.oracle.com/javase/tutorial/2d/advanced/compositing.html
+
+## Miscellaneous 
+1. http://stackoverflow.com/questions/3680221/how-can-i-get-the-monitor-size-in-java
