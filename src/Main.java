@@ -12,7 +12,7 @@ public class Main {
 	// GUI Frame
 	private static JFrame frame = new JFrame();
 	
-	public static void main(String[] args) {
+	public static void main(String[] args) {		
 		// Enable hardware acceleration
 		System.setProperty("sun.java2d.opengl", "True");
 		
@@ -27,7 +27,7 @@ public class Main {
 		
 		// Setup frame
 		frame.setTitle("Forest Fire by Peter \"Felix\" Nguyen");
-		frame.setSize(ForestFire.width + 30, ForestFire.height + 120);
+		frame.setSize(ForestFire.width + 30, ForestFire.height + 190);
 		frame.setMinimumSize(new Dimension(ForestFire.width + 30, ForestFire.height + 120));
 		frame.setLocationRelativeTo(null);
 		frame.setResizable(false);
@@ -41,6 +41,7 @@ public class Main {
 		fullInterface.setLayout(new BoxLayout(fullInterface, BoxLayout.Y_AXIS));
 		fullInterface.add(forestFire.getMapButtons());
 		fullInterface.add(forestFire);
+		fullInterface.add(forestFire.getReplaySlider());
 		
 		// Add components to frame
 		frame.add(Box.createHorizontalGlue());
