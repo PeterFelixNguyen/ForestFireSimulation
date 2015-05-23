@@ -106,6 +106,14 @@ public class Tree {
 		return y;
 	}
 	
+	public int getXCentered() {
+		return x  + (ForestFire.TREE_DIAMETER / 2);
+	}
+
+	public int getYCentered() {
+		return y + (ForestFire.TREE_DIAMETER / 2);
+	}
+	
 	public void tick() {
 		fireIndex++;
 		if (fireIndex == 74) {
