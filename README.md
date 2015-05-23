@@ -13,12 +13,12 @@ Copyright Peter "Felix" Nguyen and Emmanuel Medina Lopez
 1. [FIXED] ignited and newlyIgnitedTrees are added even though they are not on fire. Happens when user clicks on an area that has trees that have already been burnt.
 2. [POSSIBLY FIXED] Sometimes trees are not cleared from ignitedTrees
 3. [FIXED] Sometimes, a tree positioned beside the northern edge of the map can not be ignited when clicked.
-4. Graphically, burnt tree trunks position are different from healthy tree trunks.
-5. Clicking to start a fire does not work correctly (does not logically trigger nearby trees in a logical way).
+4. [POSSIBLY FIXED] Graphically, burnt tree trunks position are different from healthy tree trunks.
+5. [FIXED] Clicking to start a fire does not work correctly (does not logically trigger nearby trees in a logical way).
 
 # Issues
-1. Clicking needs to be more accurate. Should target nearest tree instead of trees within click radius.
-2. Need to make sure to re-render a VolatileImage if it is gone from memory.
+1. [NOT SURE IF I WANT THIS] Clicking needs to be more accurate. Should target nearest tree instead of trees within click radius.
+2. [IMPORTANT] Need to make sure to re-render a VolatileImage if it is gone from memory.
 
 # Ideas
 1. [DONE] Click on area to start fire at given location
