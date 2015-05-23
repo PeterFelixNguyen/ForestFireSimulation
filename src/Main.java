@@ -5,6 +5,9 @@ import javax.swing.BorderFactory;
 import javax.swing.Box;
 import javax.swing.BoxLayout;
 import javax.swing.JFrame;
+import javax.swing.JMenu;
+import javax.swing.JMenuBar;
+import javax.swing.JMenuItem;
 import javax.swing.JPanel;
 
 
@@ -25,10 +28,14 @@ public class Main {
 
 		ForestFire forestFire = new ForestFire();
 		
+		// Optional
+		int widthPadding = 30;
+		int heightPadding = 150;
+		
 		// Setup frame
 		frame.setTitle("Forest Fire by Peter \"Felix\" Nguyen");
-		frame.setSize(ForestFire.width + 30, ForestFire.height + 190);
-		frame.setMinimumSize(new Dimension(ForestFire.width + 30, ForestFire.height + 120));
+		frame.setSize(ForestFire.width, ForestFire.height);
+		frame.setMinimumSize(new Dimension(ForestFire.width, ForestFire.height));
 		frame.setLocationRelativeTo(null);
 		frame.setResizable(false);
 		frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
@@ -48,6 +55,48 @@ public class Main {
 		frame.add(fullInterface);
 		frame.add(Box.createHorizontalGlue());
 
+		// Maximize program screen
+        frame.setExtendedState(JFrame.MAXIMIZED_BOTH);
+
+        // Remove frame decoration
+		frame.setUndecorated(true);
+		
+		// Menus
+		JMenu jmiFile = new JMenu("File");
+		JMenu jmOptions = new JMenu("Options");
+		
+		// Menu items
+		JMenuItem jmiNewMap = new JMenuItem("New Map");
+		JMenuItem jmiSave = new JMenuItem("Save Map");
+		JMenuItem jmiLoad = new JMenuItem("Load Map");
+		JMenuItem jmiExit = new JMenuItem("Exit Map");
+		
+		JMenu jmMode = new JMenu("Select Mode");
+		JMenuItem jmiEditor= new JMenuItem("Map Editor");
+		JMenuItem jmiSim = new JMenuItem("Simulator");
+		
+		
+		
+		// Add functionality to menu items
+		jmiExit.addActionListener(e -> {
+			System.exit(0);
+		});
+		
+		// Add items to menus
+		jmiFile.add(jmiNewMap);
+		jmiFile.addSeparator();
+		jmiFile.add(jmiSave);
+		jmiFile.add(jmiLoad);
+		jmiFile.addSeparator();
+		jmiFile.add(jmiExit);
+		
+		
+		//
+		JMenuBar jmbForestFire = new JMenuBar();
+		jmbForestFire.add(jmiFile);
+		jmbForestFire.add(jmOptions);
+		frame.setJMenuBar(jmbForestFire);
+		
 		frame.setVisible(true);
 	}
 }

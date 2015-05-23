@@ -8,6 +8,7 @@
 import java.awt.AlphaComposite;
 import java.awt.BasicStroke;
 import java.awt.Color;
+import java.awt.Cursor;
 import java.awt.Dimension;
 import java.awt.FlowLayout;
 import java.awt.GradientPaint;
@@ -17,8 +18,10 @@ import java.awt.GraphicsConfiguration;
 import java.awt.GraphicsDevice;
 import java.awt.GraphicsEnvironment;
 import java.awt.GridLayout;
+import java.awt.Point;
 import java.awt.Polygon;
 import java.awt.RenderingHints;
+import java.awt.Toolkit;
 import java.awt.Transparency;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
@@ -69,12 +72,19 @@ public class ForestFire extends JPanel implements ActionListener {
 	public static final double TREE_FACTOR_LARGE = 0.0020;
 	public static final double TREE_FACTOR_MEDIUM = 0.0015;
 	public static final double TREE_FACTOR_SMALL = 0.0010;
+	public static final double TREE_FACTOR_XSMALL = 0.0005;
+	public static final double TREE_FACTOR_XXSMALL = 0.0002;
+	public static final double TREE_FACTOR_XXXSMALL = 0.0001;
+	public static final double TREE_FACTOR_XXXXSMALL = 0.00005;
 
 	// Resolution options
 	private static String resolution = "";
 	public static int width = WIDTH_DEFAULT;
 	public static int height = HEIGHT_DEFAULT;
-
+	
+	// Adjust height for MenuBar, ButtonBar, and ReplaySlider, 
+	public static int heightOfOtherComponents = 120;
+	
 	// Tree objects
 	private static int numTrees;
 	private static Tree[] sortedTrees;
@@ -119,10 +129,11 @@ public class ForestFire extends JPanel implements ActionListener {
 
 	// Tree graphics
 	private VolatileImage viTreeA = createVolatileImage(21, 36, Transparency.TRANSLUCENT);
-	private VolatileImage ViTreeO = createVolatileImage(21, 36, Transparency.TRANSLUCENT);
+	private VolatileImage ViTreeO = createVolatileImage(21, 30, Transparency.TRANSLUCENT);
 	private VolatileImage viTreeABurnt = createVolatileImage(21, 36, Transparency.TRANSLUCENT);
-	private VolatileImage viTreeOBurnt = createVolatileImage(21, 36, Transparency.TRANSLUCENT);
-
+	private VolatileImage viTreeOBurnt = createVolatileImage(21, 30, Transparency.TRANSLUCENT);
+	// subtract 6 from y2
+	
 	// Temporary lists used to manually start a fire
 	private static ArrayList<Tree> tempTreesA = new ArrayList<Tree>();
 	private static ArrayList<Tree> tempTreesB = new ArrayList<Tree>();
@@ -133,11 +144,11 @@ public class ForestFire extends JPanel implements ActionListener {
 	// Thread timers
 	private static Timer timerSimulation;
 	private static Timer timerReplay;
-	private int altSequenceCounter = 0;
+	private int firstAltSequenceCounter = 0;
+	private int secondAltSequenceCounter = 0;	
 
 	// Position tracker
 	private int tick = 0;
-	//private int tickSelected = 0;
 	private int replayDuration = 0;
 	
 	// Playback buttons
@@ -149,17 +160,22 @@ public class ForestFire extends JPanel implements ActionListener {
 	private StandardButton sbNormal = new StandardButton("1.0x", ButtonType.BUTTON_ROUNDED_RECTANGLUR, Theme.STANDARD_BLUEGREEN_THEME, Theme.STANDARD_PALEBROWN_THEME, Theme.STANDARD_BLACK_THEME);
 	private StandardButton sbFast = new StandardButton("1.5x", ButtonType.BUTTON_ROUNDED_RECTANGLUR, Theme.STANDARD_BLUEGREEN_THEME, Theme.STANDARD_PALEBROWN_THEME, Theme.STANDARD_BLACK_THEME);
 	private StandardButton sbFaster = new StandardButton("2.0x", ButtonType.BUTTON_ROUNDED_RECTANGLUR, Theme.STANDARD_BLUEGREEN_THEME, Theme.STANDARD_PALEBROWN_THEME, Theme.STANDARD_BLACK_THEME);
-	private StandardButton sbMap = new StandardButton("MAP", ButtonType.BUTTON_ROUNDED_RECTANGLUR, Theme.STANDARD_BLUEGREEN_THEME, Theme.STANDARD_PALEBROWN_THEME, Theme.STANDARD_BLACK_THEME);
+	private StandardButton sbEdit = new StandardButton("EDIT", ButtonType.BUTTON_ROUNDED_RECTANGLUR, Theme.STANDARD_BLUEGREEN_THEME, Theme.STANDARD_PALEBROWN_THEME, Theme.STANDARD_BLACK_THEME);
+	private StandardButton sbNew = new StandardButton("NEW", ButtonType.BUTTON_ROUNDED_RECTANGLUR, Theme.STANDARD_BLUEGREEN_THEME, Theme.STANDARD_PALEBROWN_THEME, Theme.STANDARD_BLACK_THEME);
+	private StandardButton sbOverlay = new StandardButton("OVERLAY", ButtonType.BUTTON_ROUNDED_RECTANGLUR, Theme.STANDARD_BLUEGREEN_THEME, Theme.STANDARD_PALEBROWN_THEME, Theme.STANDARD_BLACK_THEME);
+	
+	// Other
 	
 	// Playback states
 	private static boolean paused = false;
+	private static boolean stopped = true;
 	
 	// Speed states
 	private static final float speedSlow = 0.5f;
 	private static final float speedNormal = 1.0f;
 	private static final float speedFast = 1.5f;
 	private static final float speedFaster = 2.0f;
-	public int simDelay = 150;
+	public int simDelay = 50;
 	
 	// Replay track (considering using a Stack instead of an ArrayList)
 	private ArrayList<ClickAction> clickHistory = new ArrayList<ClickAction>();
@@ -171,6 +187,15 @@ public class ForestFire extends JPanel implements ActionListener {
 	private MapButtons mapButtons;
 	private ReplaySlider replaySlider;
 	
+	// Mouse Cursor
+	private int mouseXPosition = -100;
+	private int mouseYPosition = -100;
+	private boolean fireCursorClicked = false;
+	
+	// Testing
+	private VolatileImage viFireCursorBlack = createVolatileImage(CLICK_RADIUS * 2 + 3, CLICK_RADIUS * 2 + 3, Transparency.TRANSLUCENT);
+	private VolatileImage viFireCursorRed = createVolatileImage(CLICK_RADIUS * 2 + 3, CLICK_RADIUS * 2 + 3, Transparency.TRANSLUCENT);
+
 	public ForestFire() {
 		// Get device resolution
 		GraphicsDevice gd = GraphicsEnvironment.getLocalGraphicsEnvironment().getDefaultScreenDevice();
@@ -179,7 +204,7 @@ public class ForestFire extends JPanel implements ActionListener {
 		System.out.println("Device resolution = " + screenWidth + "x" + screenHeight);
 		
 		// Select resolution name
-		resolution = RESOLUTION_WVGA;
+		resolution = RESOLUTION_DEVICE;
 
 		// Configure map resolution
 		if (resolution == RESOLUTION_WVGA) {
@@ -200,15 +225,15 @@ public class ForestFire extends JPanel implements ActionListener {
 		}
 		
 		// prevent width and height from being negative
-		if (width > 100) {
-			width = width - 100;
+		if (width < 100) {
+			width = width + 100;
 		}
-		if (height > 300) {
-			height = height - 300;
+		if (height < 300) {
+			height = height + 300;
 		}
 		
 		// numTrees = x-percentage of total pixels
-		numTrees = (int) (TREE_FACTOR_MEDIUM * (width * height));
+		numTrees = (int) (TREE_FACTOR_LARGE * (width * height));
 		System.out.println("numTrees = " + numTrees);
 		
 		// Create array of trees and sort them
@@ -254,7 +279,9 @@ public class ForestFire extends JPanel implements ActionListener {
 			renderOffscreenTreeOBurnt();
 			renderOffscreenTreeA();
 			renderOffscreenTreeABurnt();
-
+			renderFireCursorBlack();
+			renderFireCursorRed();
+			
 			for (int i = 0; i < ANIMATION_LENGTH; i++) {
 				if (i < 15) {
 					if (i % 3 == 0) {
@@ -307,15 +334,28 @@ public class ForestFire extends JPanel implements ActionListener {
 
 			@Override
 			public void mouseReleased(MouseEvent e) {
-
+				fireCursorClicked = false;;
+				
+				// Test
+				if (stopped || paused) {
+					repaint();
+				}
 			}
 
 			@Override
 			public void mousePressed(MouseEvent e) {
+				fireCursorClicked = true;
+				
+				// Test
+				if (stopped || paused) {
+					repaint();
+				}
+				
 				if (!replayMode) {
 					boolean treeClicked = clickFunction(e.getX(), e.getY());
 							
 					if (treeClicked) {
+						stopped = false;
 						clickHistory.add(new ClickAction(e.getX(), e.getY(), tick));						
 					}
 				}
@@ -323,7 +363,9 @@ public class ForestFire extends JPanel implements ActionListener {
 
 			@Override
 			public void mouseExited(MouseEvent e) {
-
+				mouseXPosition = -100;
+				mouseYPosition = -100;
+				repaint();
 			}
 
 			@Override
@@ -336,9 +378,52 @@ public class ForestFire extends JPanel implements ActionListener {
 
 			}
 		});
+		
+		addMouseMotionListener(new MouseMotionListener() {
+
+			@Override
+			public void mouseDragged(MouseEvent me) {
+				// Test
+				mouseXPosition = me.getX();
+				mouseYPosition = me.getY();
+				
+				// Test
+				if (stopped || paused) {
+					repaint();
+				}
+				
+				if (!replayMode) {
+					boolean treeClicked = clickFunction(me.getX(), me.getY());
+							
+					if (treeClicked) {
+						stopped = false;
+						clickHistory.add(new ClickAction(me.getX(), me.getY(), tick));						
+					}
+				}
+			}
+
+			@Override
+			public void mouseMoved(MouseEvent me) {
+				// Test
+				mouseXPosition = me.getX();
+				mouseYPosition = me.getY();
+			    
+				// Test
+				if (stopped || paused) {
+					repaint();
+				}
+				
+				// Draw invisible cursor
+				Toolkit toolkit = Toolkit.getDefaultToolkit();
+			    Point hotSpot = new Point(0,0);
+			    BufferedImage cursorImage = new BufferedImage(1, 1, BufferedImage.TRANSLUCENT); 
+			    Cursor invisibleCursor = toolkit.createCustomCursor(cursorImage, hotSpot, "InvisibleCursor");        
+			    setCursor(invisibleCursor);
+			}
+		});
 
 		// Set the size of container
-		Dimension fixedSize = new Dimension(width, height);
+		Dimension fixedSize = new Dimension(width, height - heightOfOtherComponents);
 		setPreferredSize(fixedSize);
 		setSize(fixedSize);
 		setMinimumSize(fixedSize);
@@ -370,10 +455,10 @@ public class ForestFire extends JPanel implements ActionListener {
 					
 					
 					Set<Tree> newlyIgnitedTrees = new HashSet<Tree>();
-					altSequenceCounter++;
+					secondAltSequenceCounter++;
 
-					if (altSequenceCounter % 5 == 0) {
-						altSequenceCounter = 0;
+					if (secondAltSequenceCounter % 15 == 0) {
+						secondAltSequenceCounter = 0;
 						int sizeBurning = ignitedTrees.size();
 						Tree[] ignitedTreesArray = (Tree[]) ignitedTrees.toArray(new Tree[sizeBurning]);
 						for (int i = 0; i < sizeBurning; i++) {
@@ -412,13 +497,13 @@ public class ForestFire extends JPanel implements ActionListener {
 	}
 
 	public boolean clickFunction(int xClick, int yClick) {
-//		System.out.println("Clicked: (" + xClick + "," + yClick + ")");
+		System.out.println("Clicked: (" + xClick + "," + yClick + ")");
 //		System.out.println("Tick at Click: " + tick);
-		int x1 = xClick - ForestFire.CLICK_RADIUS / 2;
-		int x2 = xClick + ForestFire.CLICK_RADIUS / 2;
-		int y1 = yClick - ForestFire.CLICK_RADIUS / 2;
-		int y2 = yClick + ForestFire.CLICK_RADIUS / 2;
-
+		int x1 = xClick - CLICK_RADIUS;
+		int x2 = xClick + CLICK_RADIUS;
+		int y1 = yClick - CLICK_RADIUS;
+		int y2 = yClick + CLICK_RADIUS;
+		
 		if (x1 < 0) {
 			x1 = 0;
 		}
@@ -433,8 +518,8 @@ public class ForestFire extends JPanel implements ActionListener {
 		}
 
 		tempTreesA.clear();
-		int y = TreeGrouper.yBinarySearch(sortedTrees, y1);
-		int yEnd = TreeGrouper.yBinarySearch(sortedTrees, y2);
+		int y = TreeGrouper.yBinarySearch(sortedTrees, y1 - (TREE_DIAMETER / 2));
+		int yEnd = TreeGrouper.yBinarySearch(sortedTrees, y2 - (TREE_DIAMETER / 2));
 
 		for (; y <= yEnd; y++) {
 			tempTreesA.add(sortedTrees[y]);
@@ -442,30 +527,34 @@ public class ForestFire extends JPanel implements ActionListener {
 		Collections.sort(tempTreesA, new TreeXComparator());
 
 		tempTreesB.clear();
-		int x = TreeGrouper.xBinarySearch(tempTreesA, x1);
-		int xEnd = TreeGrouper.xBinarySearch(tempTreesA, x2);
+		int x = TreeGrouper.xBinarySearch(tempTreesA, x1 - (TREE_DIAMETER / 2));
+		int xEnd = TreeGrouper.xBinarySearch(tempTreesA, x2 - (TREE_DIAMETER / 2));
 
 		for (; x <= xEnd; x++) {
 			tempTreesB.add(tempTreesA.get(x));
 		}
-
+		
 		boolean fireStarted = false;
 		
 		for (int j = 0; j < tempTreesB.size(); j++) {
-			int originX = xClick;
-			int originY = yClick;
+			int originX = xClick - (TREE_DIAMETER / 2);
+			int originY = yClick - (TREE_DIAMETER / 2);
 			int nearbyX = tempTreesB.get(j).getX();
 			int nearbyY = tempTreesB.get(j).getY();
 
 			int value = (nearbyX - originX) * (nearbyX - originX) + (nearbyY - originY) * (nearbyY - originY);
-
-			if (value <= ForestFire.BURN_RADIUS_SQR) {
+			
+			if (value <= CLICK_RADIUS_SQR) {
 				if (!replayMode && !timerSimulation.isRunning()) {
 					tick = 0;
 					timerSimulation.start();
+					
 					sbPause.setEnabled(true);
 					sbStop.setEnabled(true);
 					sbReplay.setEnabled(true);
+					sbEdit.setEnabled(false);
+					sbNew.setEnabled(false);
+					
 					clickHistory.clear();
 				}
 				
@@ -496,7 +585,7 @@ public class ForestFire extends JPanel implements ActionListener {
 		return image;
 	}
 
-	void renderOffscreenTreeO() {
+	private void renderOffscreenTreeO() {
 		do {
 			if (ViTreeO.validate(getGraphicsConfiguration()) == VolatileImage.IMAGE_INCOMPATIBLE) {
 				// old vImg doesn't work with new GraphicsConfig; re-create it
@@ -511,26 +600,36 @@ public class ForestFire extends JPanel implements ActionListener {
 			// Draw over this background
 			g2d.setComposite(AlphaComposite.SrcOver); // Draw over destination
 
+			// Test
 			// Draw trunks
 			g2d.setColor(new Color(160, 110, 60));
 			g2d.setStroke(new BasicStroke(3));
-			g2d.draw(new Line2D.Float(0 + TREE_DIAMETER / 2, 0 + 12 + 6, 0 + TREE_DIAMETER / 2, 0 + 28 + 6));
+			g2d.draw(new Line2D.Float(0 + TREE_DIAMETER / 2, 0 + 12, 0 + TREE_DIAMETER / 2, 0 + 28));
 
 			// Anti aliasing and stroke to render smooth line
 			g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
 			g2d.setStroke(new BasicStroke(0.40f));
 
+			// Test
 			// Draw circular leaves
 			g2d.setColor(new Color(30, 150, 70));
-			g2d.fillOval(0, 6, TREE_DIAMETER, TREE_DIAMETER);
+			g2d.fillOval(0, 0, TREE_DIAMETER, TREE_DIAMETER);
 			g2d.setColor(Color.BLACK);
-			g2d.drawOval(0, 6, TREE_DIAMETER, TREE_DIAMETER);
+			g2d.drawOval(0, 0, TREE_DIAMETER, TREE_DIAMETER);
 
+			// Test
+			g2d.setColor(Color.RED);
+			g2d.fillOval(0, 0, 2, 2);
+
+			// Test
+			g2d.setColor(Color.BLUE);
+			g2d.fillOval(0 + TREE_DIAMETER / 2, 0 + TREE_DIAMETER / 2, 2, 2);
+			
 			g2d.dispose();
 		} while (viTreeA.contentsLost());
 	}
 
-	void renderOffscreenTreeOBurnt() {
+	private void renderOffscreenTreeOBurnt() {
 		do {
 			if (viTreeOBurnt.validate(getGraphicsConfiguration()) == VolatileImage.IMAGE_INCOMPATIBLE) {
 				viTreeOBurnt = createVolatileImage(viTreeOBurnt.getWidth(), viTreeOBurnt.getHeight());
@@ -553,7 +652,7 @@ public class ForestFire extends JPanel implements ActionListener {
 		} while (viTreeA.contentsLost());
 	}
 
-	void renderOffscreenTreeA() {
+	private void renderOffscreenTreeA() {
 		do {
 			if (viTreeA.validate(getGraphicsConfiguration()) == VolatileImage.IMAGE_INCOMPATIBLE) {
 				viTreeA = createVolatileImage(viTreeA.getWidth(), viTreeA.getHeight());
@@ -594,11 +693,19 @@ public class ForestFire extends JPanel implements ActionListener {
 			g2d.drawLine(triX[2], triY[2], triX[1], triY[1]);
 			g2d.drawLine(triX[1], triY[1], triX[0], triY[0]);
 
+			// Test
+			g2d.setColor(Color.RED);
+			g2d.fillOval(0, 0, 2, 2);
+
+			// Test
+			g2d.setColor(Color.BLUE);
+			g2d.fillOval(0 + TREE_DIAMETER / 2, 0 + TREE_DIAMETER / 2, 2, 2);
+			
 			g2d.dispose();
 		} while (viTreeA.contentsLost());
 	}
 
-	void renderOffscreenTreeABurnt() {
+	private void renderOffscreenTreeABurnt() {
 		do {
 			if (viTreeABurnt.validate(getGraphicsConfiguration()) == VolatileImage.IMAGE_INCOMPATIBLE) {
 				viTreeABurnt = createVolatileImage(viTreeABurnt.getWidth(), viTreeABurnt.getHeight());
@@ -621,7 +728,7 @@ public class ForestFire extends JPanel implements ActionListener {
 		} while (viTreeA.contentsLost());
 	}
 	
-	void renderOffscreenFire(VolatileImage vImg, BufferedImage bImg) {
+	private void renderOffscreenFire(VolatileImage vImg, BufferedImage bImg) {
 		do {
 			if (vImg.validate(getGraphicsConfiguration()) == VolatileImage.IMAGE_INCOMPATIBLE) {
 				vImg = createVolatileImage(bImg.getWidth(), bImg.getHeight());
@@ -642,17 +749,68 @@ public class ForestFire extends JPanel implements ActionListener {
 		} while (vImg.contentsLost());
 	}
 	
+	void renderFireCursorBlack() {
+		do {
+			if (viFireCursorBlack.validate(getGraphicsConfiguration()) == VolatileImage.IMAGE_INCOMPATIBLE) {
+				viFireCursorBlack = createVolatileImage(viFireCursorBlack.getWidth(), viFireCursorBlack.getHeight());
+			}
+			Graphics2D g2d = viFireCursorBlack.createGraphics();
+
+			// Fill a transparent background 
+			g2d.setComposite(AlphaComposite.DstOut); // TRANSPARENCY STEP 1
+			g2d.fillRect(0, 0, viFireCursorBlack.getWidth() + 3, viFireCursorBlack.getHeight() + 3); // TRANSPARENCY STEP 2
+
+			// Draw over this background
+			g2d.setComposite(AlphaComposite.SrcOver); // Draw over destination
+
+			// Draw mouse cursor
+			g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+			g2d.setStroke(new BasicStroke(2));
+			g2d.drawOval(1, 1, CLICK_RADIUS * 2, CLICK_RADIUS * 2);
+
+			g2d.dispose();
+		} while (viFireCursorBlack.contentsLost());
+	}
+	
+	void renderFireCursorRed() {
+		do {
+			if (viFireCursorRed.validate(getGraphicsConfiguration()) == VolatileImage.IMAGE_INCOMPATIBLE) {
+				viFireCursorRed = createVolatileImage(viFireCursorRed.getWidth(), viFireCursorRed.getHeight());
+			}
+			Graphics2D g2d = viFireCursorRed.createGraphics();
+
+			// Fill a transparent background 
+			g2d.setComposite(AlphaComposite.DstOut); // TRANSPARENCY STEP 1
+			g2d.fillRect(0, 0, viFireCursorRed.getWidth() + 3, viFireCursorRed.getHeight() + 3); // TRANSPARENCY STEP 2
+
+			// Draw over this background
+			g2d.setComposite(AlphaComposite.SrcOver); // Draw over destination
+
+			// Draw mouse cursor
+			g2d.setColor(Color.RED);
+			g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+			g2d.setStroke(new BasicStroke(2));
+			g2d.drawOval(1, 1, CLICK_RADIUS * 2, CLICK_RADIUS * 2);
+
+			g2d.dispose();
+		} while (viFireCursorRed.contentsLost());
+	}
+	
 	@Override
 	public void paintComponent(Graphics g) {
 		super.paintComponent(g);
 				
-		Graphics2D g2 = (Graphics2D) g;
+		Graphics2D g2d = (Graphics2D) g;
 
 		// Draw land
 		g.setColor(new Color(90, 170, 90));
-		g.fillRect(0, 0, width, height);
+		g.fillRect(0, 0, width, height - heightOfOtherComponents);
 
 		// For all trees
+		if (!paused) {
+			firstAltSequenceCounter++;
+		}
+		
 		for (int i = 0; i < numTrees; i++) {
 			int x = sortedTrees[i].getX();
 			int y = sortedTrees[i].getY();
@@ -675,12 +833,23 @@ public class ForestFire extends JPanel implements ActionListener {
 
 			// Fire animation
 			if (sortedTrees[i].getState() == Tree.RED) {
-				if (sortedTrees[i].fireIndex < ANIMATION_LENGTH - 1) {
-					sortedTrees[i].tick();
+				
+				if (sortedTrees[i].fireIndex < ANIMATION_LENGTH - 1 && firstAltSequenceCounter % 3 == 0) {
+					if (!paused) {
+						firstAltSequenceCounter = 0;
+						sortedTrees[i].tick();
+					}
 				}
 
-				g2.drawImage(vfireAnimation[sortedTrees[i].fireIndex], x, y - 6, this);
+				g2d.drawImage(vfireAnimation[sortedTrees[i].fireIndex], x, y - 6, this);
 			}
+		}
+			
+		// Mouse cursor
+		if (fireCursorClicked) {
+			g2d.drawImage(viFireCursorRed, mouseXPosition - CLICK_RADIUS, mouseYPosition - CLICK_RADIUS, this);
+		} else {
+			g2d.drawImage(viFireCursorBlack, mouseXPosition - CLICK_RADIUS, mouseYPosition - CLICK_RADIUS, this);
 		}
 	}
 
@@ -688,7 +857,7 @@ public class ForestFire extends JPanel implements ActionListener {
 		// Generate trees
 		for (int i = 0; i < numTrees; i++) {
 			int x = (int) (10 + Math.random() * (width - TREE_DIAMETER - 15));
-			int y = (int) (10 + Math.random() * (height - 50));
+			int y = (int) (10 + Math.random() * (height - 50 - heightOfOtherComponents));
 
 			sortedTrees[i] = new Tree(x, y);
 		}
@@ -720,10 +889,10 @@ public class ForestFire extends JPanel implements ActionListener {
 			repaint();
 			
 			Set<Tree> newlyIgnitedTrees = new HashSet<Tree>();
-			altSequenceCounter++;
+			secondAltSequenceCounter++;
 
-			if (altSequenceCounter % 5 == 0) {
-				altSequenceCounter = 0;
+			if (secondAltSequenceCounter % 15 == 0) {
+				secondAltSequenceCounter = 0;
 				int sizeBurning = ignitedTrees.size();
 				Tree[] ignitedTreesArray = (Tree[]) ignitedTrees.toArray(new Tree[sizeBurning]);
 				for (int i = 0; i < sizeBurning; i++) {
@@ -757,9 +926,6 @@ public class ForestFire extends JPanel implements ActionListener {
 	class MapButtons extends JPanel {
 		
 		private MapButtons() {
-//			UIManager.getDefaults().put("Button.disabledText", Color.BLACK);
-//			UIManager.getDefaults().put("Button.disabledForeground", Color.BLACK);
-
 			sbPlay.setEnabled(false);
 			sbPause.setEnabled(false);
 			sbStop.setEnabled(false);
@@ -774,7 +940,6 @@ public class ForestFire extends JPanel implements ActionListener {
 			sbNormal.setFocusPainted(false);
 			sbFast.setFocusPainted(false);
 			sbFaster.setFocusPainted(false);
-			
 			
 			// Event handling START
 			sbPlay.addActionListener(new ActionListener() {
@@ -820,11 +985,14 @@ public class ForestFire extends JPanel implements ActionListener {
 					}
 
 					paused = false;
+					stopped = true;
 					
 					sbPlay.setEnabled(false);
 					sbPause.setEnabled(false);
 					sbStop.setEnabled(false);
 					sbReplay.setEnabled(true);
+					sbEdit.setEnabled(true);
+					sbNew.setEnabled(true);
 					
 					ForestFire.this.repaint();
 					getReplaySlider().repaint();
@@ -860,12 +1028,15 @@ public class ForestFire extends JPanel implements ActionListener {
 					}
 
 					paused = false;
+					stopped = false;
 					
 					sbPlay.setEnabled(true);
 					sbPause.setEnabled(true);
 					sbStop.setEnabled(true);
 					sbReplay.setEnabled(false);
-					}
+					sbEdit.setEnabled(false);
+					sbNew.setEnabled(false);
+				}
 			});
 			
 			sbSlow.addActionListener(new ActionListener() {
@@ -915,6 +1086,26 @@ public class ForestFire extends JPanel implements ActionListener {
 					sbFaster.setEnabled(false);
 				}
 			});
+			
+			// This is a temporary button used test making random maps
+			sbNew.addActionListener(new ActionListener() {
+
+				@Override
+				public void actionPerformed(ActionEvent arg0) {
+					// I don't think I need to clear the burning trees
+					if (!timerSimulation.isRunning() && !timerReplay.isRunning()) {
+						
+						// Create array of trees and sort them
+						sortedTrees = new Tree[numTrees];
+						makeTrees(2);
+						
+						// Add neighboring trees to each tree
+						TreeGrouper.buildTreeSets(sortedTrees);	
+						
+						ForestFire.this.repaint();
+					}
+				}
+			});
 			// Event handling END
 			
 			// Playback standard button group
@@ -938,8 +1129,10 @@ public class ForestFire extends JPanel implements ActionListener {
 			// Configure button group
 			JPanel groupConfigure = new JPanel(new FlowLayout(FlowLayout.LEFT));
 			groupConfigure.setBackground(new Color(215,199,151));
-			groupConfigure.setBorder(BorderFactory.createTitledBorder(BorderFactory.createLineBorder(Color.BLACK, 2), "Configure..."));
-			groupConfigure.add(sbMap);
+			groupConfigure.setBorder(BorderFactory.createTitledBorder(BorderFactory.createLineBorder(Color.BLACK, 2), "Map"));
+			groupConfigure.add(sbEdit);
+			groupConfigure.add(sbNew);
+			groupConfigure.add(sbOverlay);
 			
 			// Button bar for user controls and settings
 			setLayout(new FlowLayout(FlowLayout.LEFT));
@@ -978,7 +1171,7 @@ public class ForestFire extends JPanel implements ActionListener {
 //					System.out.println("mousePressed");
 //					System.out.println("xPosition: " + e.getX());
 //					System.out.println("xWidth: " + ((JComponent) e.getSource()).getWidth());
-					if (replayMode) {
+					if (replayMode) {						
 						paused = true;
 												
 						xPosition = e.getX();
@@ -1105,10 +1298,10 @@ public class ForestFire extends JPanel implements ActionListener {
 				}				
 				
 				Set<Tree> newlyIgnitedTrees = new HashSet<Tree>();
-				altSequenceCounter++;
+				secondAltSequenceCounter++;
 
-				if (altSequenceCounter % 5 == 0) {
-					altSequenceCounter = 0;
+				if (secondAltSequenceCounter % 15 == 0) {
+					secondAltSequenceCounter = 0;
 					int sizeBurning = ignitedTrees.size();
 					Tree[] ignitedTreesArray = (Tree[]) ignitedTrees.toArray(new Tree[sizeBurning]);
 					for (int i = 0; i < sizeBurning; i++) {
