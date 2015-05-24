@@ -65,17 +65,21 @@ public class ForestFire extends JPanel implements ActionListener {
 	public final static int HEIGHT_TEST = 600;
 
 	// Constants to specify percentage of trees
-	public static final double TREE_FACTOR_XXXXLARGE = 0.0300;
-	public static final double TREE_FACTOR_XXXLARGE = 0.0150;
-	public static final double TREE_FACTOR_XXLARGE = 0.0030;
-	public static final double TREE_FACTOR_XLARGE = 0.0025;
-	public static final double TREE_FACTOR_LARGE = 0.0020;
-	public static final double TREE_FACTOR_MEDIUM = 0.0015;
-	public static final double TREE_FACTOR_SMALL = 0.0010;
-	public static final double TREE_FACTOR_XSMALL = 0.0005;
-	public static final double TREE_FACTOR_XXSMALL = 0.0002;
-	public static final double TREE_FACTOR_XXXSMALL = 0.0001;
-	public static final double TREE_FACTOR_XXXXSMALL = 0.00005;
+	public static final double POPULATION_XXXXLARGE = 0.00125;
+	public static final double  POPULATION_XXXLARGE = 0.00115;
+	public static final double   POPULATION_XXLARGE = 0.00095;
+	public static final double    POPULATION_XLARGE = 0.00085;
+	public static final double     POPULATION_LARGE = 0.00075;
+	public static final double    POPULATION_MEDIUM = 0.00065;
+	public static final double     POPULATION_SMALL = 0.00055;
+	public static final double    POPULATION_XSMALL = 0.00045;
+	public static final double   POPULATION_XXSMALL = 0.00035;
+	public static final double  POPULATION_XXXSMALL = 0.00025;
+	public static final double POPULATION_XXXXSMALL = 0.00015;
+	
+	// Constants to specify percentage of trees for testing 
+	public static final double POPULATION_MEGALARGE = 0.01000;
+	public static final double POPULATION_MEGASMALL = 0.00001;
 
 	// Resolution options
 	private static String resolution = "";
@@ -158,14 +162,12 @@ public class ForestFire extends JPanel implements ActionListener {
 	private StandardButton sbReplay = new StandardButton("REPLAY", ButtonType.BUTTON_ROUNDED_RECTANGLUR, Theme.STANDARD_BLUEGREEN_THEME, Theme.STANDARD_PALEBROWN_THEME, Theme.STANDARD_BLACK_THEME);
 	private StandardButton sbSlow = new StandardButton("0.5x", ButtonType.BUTTON_ROUNDED_RECTANGLUR, Theme.STANDARD_BLUEGREEN_THEME, Theme.STANDARD_PALEBROWN_THEME, Theme.STANDARD_BLACK_THEME);
 	private StandardButton sbNormal = new StandardButton("1.0x", ButtonType.BUTTON_ROUNDED_RECTANGLUR, Theme.STANDARD_BLUEGREEN_THEME, Theme.STANDARD_PALEBROWN_THEME, Theme.STANDARD_BLACK_THEME);
-	private StandardButton sbFast = new StandardButton("1.5x", ButtonType.BUTTON_ROUNDED_RECTANGLUR, Theme.STANDARD_BLUEGREEN_THEME, Theme.STANDARD_PALEBROWN_THEME, Theme.STANDARD_BLACK_THEME);
-	private StandardButton sbFaster = new StandardButton("2.0x", ButtonType.BUTTON_ROUNDED_RECTANGLUR, Theme.STANDARD_BLUEGREEN_THEME, Theme.STANDARD_PALEBROWN_THEME, Theme.STANDARD_BLACK_THEME);
+	private StandardButton sbFast = new StandardButton("2.0x", ButtonType.BUTTON_ROUNDED_RECTANGLUR, Theme.STANDARD_BLUEGREEN_THEME, Theme.STANDARD_PALEBROWN_THEME, Theme.STANDARD_BLACK_THEME);
+	private StandardButton sbFaster = new StandardButton("4.0x", ButtonType.BUTTON_ROUNDED_RECTANGLUR, Theme.STANDARD_BLUEGREEN_THEME, Theme.STANDARD_PALEBROWN_THEME, Theme.STANDARD_BLACK_THEME);
 	private StandardButton sbEdit = new StandardButton("EDIT", ButtonType.BUTTON_ROUNDED_RECTANGLUR, Theme.STANDARD_BLUEGREEN_THEME, Theme.STANDARD_PALEBROWN_THEME, Theme.STANDARD_BLACK_THEME);
 	private StandardButton sbNew = new StandardButton("NEW", ButtonType.BUTTON_ROUNDED_RECTANGLUR, Theme.STANDARD_BLUEGREEN_THEME, Theme.STANDARD_PALEBROWN_THEME, Theme.STANDARD_BLACK_THEME);
 	private StandardButton sbOverlay = new StandardButton("OVERLAY", ButtonType.BUTTON_ROUNDED_RECTANGLUR, Theme.STANDARD_BLUEGREEN_THEME, Theme.STANDARD_PALEBROWN_THEME, Theme.STANDARD_BLACK_THEME);
-	
-	// Other
-	
+		
 	// Playback states
 	private static boolean paused = false;
 	private static boolean stopped = true;
@@ -173,8 +175,8 @@ public class ForestFire extends JPanel implements ActionListener {
 	// Speed states
 	private static final float speedSlow = 0.5f;
 	private static final float speedNormal = 1.0f;
-	private static final float speedFast = 1.5f;
-	private static final float speedFaster = 2.0f;
+	private static final float speedFast = 2.0f;
+	private static final float speedFaster = 4.0f;
 	public int simDelay = 50;
 	
 	// Replay track (considering using a Stack instead of an ArrayList)
@@ -191,11 +193,16 @@ public class ForestFire extends JPanel implements ActionListener {
 	private int mouseXPosition = -100;
 	private int mouseYPosition = -100;
 	private boolean fireCursorClicked = false;
-	
-	// Testing
 	private VolatileImage viFireCursorBlack = createVolatileImage(CLICK_RADIUS * 2 + 3, CLICK_RADIUS * 2 + 3, Transparency.TRANSLUCENT);
 	private VolatileImage viFireCursorRed = createVolatileImage(CLICK_RADIUS * 2 + 3, CLICK_RADIUS * 2 + 3, Transparency.TRANSLUCENT);
-
+	
+	// Boolean Mouse Flags
+	private boolean mousePressedLeft = false;
+	
+	// Edit Mode
+	@SuppressWarnings("unused")
+	private boolean editMode = false;
+	
 	public ForestFire() {
 		// Get device resolution
 		GraphicsDevice gd = GraphicsEnvironment.getLocalGraphicsEnvironment().getDefaultScreenDevice();
@@ -233,7 +240,7 @@ public class ForestFire extends JPanel implements ActionListener {
 		}
 		
 		// numTrees = x-percentage of total pixels
-		numTrees = (int) (TREE_FACTOR_LARGE * (width * height));
+		numTrees = (int) (POPULATION_MEDIUM * (width * height));
 		System.out.println("numTrees = " + numTrees);
 		
 		// Create array of trees and sort them
@@ -331,33 +338,36 @@ public class ForestFire extends JPanel implements ActionListener {
 		}
 
 		addMouseListener(new MouseListener() {
+			
+			@Override
+			public void mousePressed(MouseEvent me) {				
+				if (me.getButton() == MouseEvent.BUTTON1) {
+					mousePressedLeft = true;
+					fireCursorClicked = true;
+					
+					if (stopped || paused) {
+						repaint();
+					}
+					
+					if (!replayMode) {
+						boolean treeClicked = clickFunction(me.getX(), me.getY());
+								
+						if (treeClicked) {
+							stopped = false;
+							clickHistory.add(new ClickAction(me.getX(), me.getY(), tick));						
+						}
+					}
+				}
+			}
+			
 
 			@Override
 			public void mouseReleased(MouseEvent e) {
+				mousePressedLeft = false;
 				fireCursorClicked = false;;
 				
-				// Test
 				if (stopped || paused) {
 					repaint();
-				}
-			}
-
-			@Override
-			public void mousePressed(MouseEvent e) {
-				fireCursorClicked = true;
-				
-				// Test
-				if (stopped || paused) {
-					repaint();
-				}
-				
-				if (!replayMode) {
-					boolean treeClicked = clickFunction(e.getX(), e.getY());
-							
-					if (treeClicked) {
-						stopped = false;
-						clickHistory.add(new ClickAction(e.getX(), e.getY(), tick));						
-					}
 				}
 			}
 
@@ -383,16 +393,14 @@ public class ForestFire extends JPanel implements ActionListener {
 
 			@Override
 			public void mouseDragged(MouseEvent me) {
-				// Test
 				mouseXPosition = me.getX();
 				mouseYPosition = me.getY();
 				
-				// Test
 				if (stopped || paused) {
 					repaint();
 				}
 				
-				if (!replayMode) {
+				if (mousePressedLeft && !replayMode) {
 					boolean treeClicked = clickFunction(me.getX(), me.getY());
 							
 					if (treeClicked) {
@@ -404,11 +412,9 @@ public class ForestFire extends JPanel implements ActionListener {
 
 			@Override
 			public void mouseMoved(MouseEvent me) {
-				// Test
 				mouseXPosition = me.getX();
 				mouseYPosition = me.getY();
 			    
-				// Test
 				if (stopped || paused) {
 					repaint();
 				}
@@ -600,7 +606,6 @@ public class ForestFire extends JPanel implements ActionListener {
 			// Draw over this background
 			g2d.setComposite(AlphaComposite.SrcOver); // Draw over destination
 
-			// Test
 			// Draw trunks
 			g2d.setColor(new Color(160, 110, 60));
 			g2d.setStroke(new BasicStroke(3));
@@ -610,18 +615,17 @@ public class ForestFire extends JPanel implements ActionListener {
 			g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
 			g2d.setStroke(new BasicStroke(0.40f));
 
-			// Test
 			// Draw circular leaves
 			g2d.setColor(new Color(30, 150, 70));
 			g2d.fillOval(0, 0, TREE_DIAMETER, TREE_DIAMETER);
 			g2d.setColor(Color.BLACK);
 			g2d.drawOval(0, 0, TREE_DIAMETER, TREE_DIAMETER);
 
-			// Test
+			// Draw positioning overlay
 			g2d.setColor(Color.RED);
 			g2d.fillOval(0, 0, 2, 2);
 
-			// Test
+			// Graphical positioning overlay
 			g2d.setColor(Color.BLUE);
 			g2d.fillOval(0 + TREE_DIAMETER / 2, 0 + TREE_DIAMETER / 2, 2, 2);
 			
@@ -693,11 +697,11 @@ public class ForestFire extends JPanel implements ActionListener {
 			g2d.drawLine(triX[2], triY[2], triX[1], triY[1]);
 			g2d.drawLine(triX[1], triY[1], triX[0], triY[0]);
 
-			// Test
+			// Draw positioning overlay
 			g2d.setColor(Color.RED);
 			g2d.fillOval(0, 0, 2, 2);
 
-			// Test
+			// Graphical positioning overlay
 			g2d.setColor(Color.BLUE);
 			g2d.fillOval(0 + TREE_DIAMETER / 2, 0 + TREE_DIAMETER / 2, 2, 2);
 			
@@ -923,6 +927,21 @@ public class ForestFire extends JPanel implements ActionListener {
 		}
 	}
 	
+	public void setEditMode(boolean editMode) {
+		this.editMode = editMode;
+		
+		if (editMode == true) {
+			getMapButtons().stop();
+			launchEditMode();
+		} else {
+			
+		}
+	}
+	
+	public void launchEditMode() {
+		// 
+	}
+	
 	class MapButtons extends JPanel {
 		
 		private MapButtons() {
@@ -967,35 +986,7 @@ public class ForestFire extends JPanel implements ActionListener {
 			sbStop.addActionListener(new ActionListener() {
 				@Override
 				public void actionPerformed(ActionEvent arg0) {					
-					if (!replayMode) {
-						replayDuration = tick;
-					}
-					
-					if (replayMode) {
-						replayMode = false;
-					}
-					
-					timerReplay.stop();
-					timerSimulation.stop();
-					
-					ignitedTrees.clear();
-				
-					for (Tree tree : sortedTrees) {
-						tree.resetState();
-					}
-
-					paused = false;
-					stopped = true;
-					
-					sbPlay.setEnabled(false);
-					sbPause.setEnabled(false);
-					sbStop.setEnabled(false);
-					sbReplay.setEnabled(true);
-					sbEdit.setEnabled(true);
-					sbNew.setEnabled(true);
-					
-					ForestFire.this.repaint();
-					getReplaySlider().repaint();
+					stop();
 				}
 			});
 	
@@ -1144,6 +1135,38 @@ public class ForestFire extends JPanel implements ActionListener {
 			add(groupSpeed);
 			add(groupConfigure);
 		}
+		
+		public void stop() {
+			if (!replayMode) {
+				replayDuration = tick;
+			}
+			
+			if (replayMode) {
+				replayMode = false;
+			}
+			
+			timerReplay.stop();
+			timerSimulation.stop();
+			
+			ignitedTrees.clear();
+		
+			for (Tree tree : sortedTrees) {
+				tree.resetState();
+			}
+
+			paused = false;
+			stopped = true;
+			
+			sbPlay.setEnabled(false);
+			sbPause.setEnabled(false);
+			sbStop.setEnabled(false);
+			sbReplay.setEnabled(true);
+			sbEdit.setEnabled(true);
+			sbNew.setEnabled(true);
+			
+			ForestFire.this.repaint();
+			getReplaySlider().repaint();
+		}
 	}
 	
 	public MapButtons getMapButtons() {
@@ -1157,6 +1180,8 @@ public class ForestFire extends JPanel implements ActionListener {
 		private Color lightBluePosition = new Color(131,208,201);
 		private Color lightGreenPosition = new Color(90,170,90);
 		private JLabel trackSlider;
+		// Boolean flags
+		private boolean mousePressedLeft = false;
 
 		private ReplaySlider() {
 			trackSlider = new JLabel();
@@ -1167,32 +1192,17 @@ public class ForestFire extends JPanel implements ActionListener {
 			trackSlider.addMouseListener(new MouseAdapter() {
 				
 				@Override
-				public void mousePressed(MouseEvent e) {
-//					System.out.println("mousePressed");
-//					System.out.println("xPosition: " + e.getX());
-//					System.out.println("xWidth: " + ((JComponent) e.getSource()).getWidth());
-					if (replayMode) {						
-						paused = true;
-												
-						xPosition = e.getX();
-						int xWidth = ((JComponent) e.getSource()).getWidth();
-						percentPosition = (int) (100 * (float) xPosition / (float) xWidth);
-						
-						if (percentPosition < 0) {
-							percentPosition = 0;
-						} else if (percentPosition > 100) {
-							percentPosition = 100;
-						}
-						
-						tick = (int) (((float) percentPosition / 100f) * replayDuration);
-						
-						repaint();
+				public void mousePressed(MouseEvent me) {
+					if (me.getButton() == MouseEvent.BUTTON1 && replayMode) {	
+						mousePressedLeft = true;
+						seekReplay(me);
 					}
 				}
 				
 				@Override
-				public void mouseReleased(MouseEvent e) {
+				public void mouseReleased(MouseEvent me) {
 					if (replayMode) {
+						mousePressedLeft = false;
 						rebuildStates();
 						paused = false;
 					}
@@ -1202,31 +1212,13 @@ public class ForestFire extends JPanel implements ActionListener {
 			trackSlider.addMouseMotionListener(new MouseMotionListener() {
 				
 				@Override
-				public void mouseMoved(MouseEvent e) {
+				public void mouseMoved(MouseEvent me) {
 				}
 				
 				@Override
-				public void mouseDragged(MouseEvent e) {
-					// Be careful e.getX() can be less than zero or greater than width
-//					System.out.println("mouseDragged");
-//					System.out.println("xPosition: " + e.getX());
-//					System.out.println("xWidth: " + ((JComponent) e.getSource()).getWidth());
-					if (replayMode) {
-						paused = true;
-						
-						xPosition = e.getX();
-						int xWidth = ((JComponent) e.getSource()).getWidth();
-						percentPosition = (int) (100 * (float) xPosition / (float) xWidth);
-						
-						if (percentPosition < 0) {
-							percentPosition = 0;
-						} else if (percentPosition > 100) {
-							percentPosition = 100;
-						}
-							
-						tick = (int) (((float) percentPosition / 100f) * replayDuration);
-						
-						repaint();
+				public void mouseDragged(MouseEvent me) {
+					if (mousePressedLeft && replayMode) {						
+						seekReplay(me);
 					}
 				}
 			});
@@ -1235,6 +1227,25 @@ public class ForestFire extends JPanel implements ActionListener {
 			setSize(new Dimension(width, 20));
 			setMinimumSize(new Dimension(width, 20));
 			setMaximumSize(new Dimension(width, 20));		
+		}
+		
+		public void seekReplay(MouseEvent me) {
+			paused = true;
+			
+			// Be careful me.getX() can be less than zero or greater than width
+			xPosition = me.getX();
+			int xWidth = ((JComponent) me.getSource()).getWidth();
+			percentPosition = (int) (100 * (float) xPosition / (float) xWidth);
+			
+			if (percentPosition < 0) {
+				percentPosition = 0;
+			} else if (percentPosition > 100) {
+				percentPosition = 100;
+			}
+				
+			tick = (int) (((float) percentPosition / 100f) * replayDuration);
+			
+			repaint();
 		}
 		
 		@Override
