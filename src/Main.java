@@ -1,6 +1,8 @@
 import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.GridLayout;
+import java.awt.event.ItemEvent;
+import java.awt.event.ItemListener;
 
 import javax.swing.BorderFactory;
 import javax.swing.Box;
@@ -13,7 +15,8 @@ import javax.swing.JMenuBar;
 import javax.swing.JMenuItem;
 import javax.swing.JPanel;
 import javax.swing.JSlider;
-
+import javax.swing.event.ChangeEvent;
+import javax.swing.event.ChangeListener;
 
 public class Main {
 	// GUI Frame
@@ -21,6 +24,7 @@ public class Main {
 	// Need to refactor code (editMode)
 	//private static boolean editMode = false;
 	
+	@SuppressWarnings("unused")
 	public static void main(String[] args) {		
 		// Enable hardware acceleration
 		System.setProperty("sun.java2d.opengl", "True");
@@ -52,7 +56,7 @@ public class Main {
 		JPanel fullInterface = new JPanel();
 		fullInterface.setBorder(BorderFactory.createLineBorder(Color.BLACK, 2));
 		fullInterface.setLayout(new BoxLayout(fullInterface, BoxLayout.Y_AXIS));
-		fullInterface.add(forestFire.getMapButtons());
+		fullInterface.add(forestFire.getUpperPanel());
 		fullInterface.add(forestFire);
 		fullInterface.add(forestFire.getReplaySlider());
 		
@@ -74,14 +78,32 @@ public class Main {
 		
 		// Menu items (File)
 		JMenuItem jmiNewMap = new JMenuItem("New Map");
-		JMenuItem jmiEdit = new JMenuItem("Edit Map");
-		JMenuItem jmiSave = new JMenuItem("Save Map");
-		JMenuItem jmiLoad = new JMenuItem("Load Map");
+		JMenuItem jmiEditMap = new JMenuItem("Edit Map");
+		JMenuItem jmiSaveMap = new JMenuItem("Save Map");
+		JMenuItem jmiLoadMap = new JMenuItem("Load Map");
 		JMenuItem jmiExit = new JMenuItem("Exit Simulator");
 		
 		// Menu items (Options)
 		JMenu jmView = new JMenu("View");
 		JCheckBoxMenuItem jmiPositions = new JCheckBoxMenuItem("Tree Positions");
+		jmiPositions.addItemListener(new ItemListener() {
+
+			@Override
+			public void itemStateChanged(ItemEvent ie) {
+				if (ie.getStateChange() == ItemEvent.SELECTED) {
+					forestFire.setViewPositionEnabled(true);
+					// Should re-work code as a method with argument
+				} else {
+					forestFire.setViewPositionEnabled(false);
+				}
+				
+				forestFire.renderTreeO();
+				forestFire.renderTreeA();
+				
+				forestFire.repaint();
+			}
+		});
+		
 		JCheckBoxMenuItem jmiHealth = new JCheckBoxMenuItem("Tree Health");
 		jmView.add(jmiPositions);
 		jmView.add(jmiHealth);
@@ -91,14 +113,60 @@ public class Main {
 		
 		JPanel jpViewFire = new JPanel(new GridLayout(0,1));
 
-		// JSlider tweak:
-		// http://stackoverflow.com/questions/518471/jslider-question-position-after-leftclick
+		CustomSlider clickSlider = new CustomSlider();
+		clickSlider.setMajorTickSpacing(10);
+		clickSlider.setMinorTickSpacing(5);
+		clickSlider.setPaintTicks(true);
+		clickSlider.setPaintLabels(true);
+		clickSlider.setMinimum(10);
+		clickSlider.setMaximum(30);
+		clickSlider.setValue(30);
+		clickSlider.addChangeListener(new ChangeListener() {
+
+			@Override
+			public void stateChanged(ChangeEvent ce) {
+		        JSlider source = (JSlider)ce.getSource();
+		        
+		        if (!source.getValueIsAdjusting()) {
+		            ForestFire.clickRadius = (int)source.getValue();
+		            ForestFire.clickRadiusSqr = ForestFire.clickRadius * ForestFire.clickRadius;
+		            forestFire.renderFireCursorBlack();
+		            forestFire.renderFireCursorRed();
+		        } 
+			}
+		});
+		
 		jpViewFire.add(new JLabel("  Click Radius"));
-		jpViewFire.add(new JSlider());
+		jpViewFire.add(clickSlider);
+
+		CustomSlider burnSlider = new CustomSlider();
+		burnSlider.setMajorTickSpacing(10);
+		burnSlider.setMinorTickSpacing(5);
+		burnSlider.setPaintTicks(true);
+		burnSlider.setPaintLabels(true);
+		burnSlider.setMinimum(10);
+		burnSlider.setMaximum(40);
+		burnSlider.setValue(30);
+		burnSlider.addChangeListener(new ChangeListener() {
+
+			@Override
+			public void stateChanged(ChangeEvent ce) {
+		        JSlider source = (JSlider)ce.getSource();
+		        if (!source.getValueIsAdjusting()) {
+		            ForestFire.burnRadius = (int)source.getValue();
+		            ForestFire.burnRadiusSqr = ForestFire.burnRadius * ForestFire.burnRadius;
+		            // Re-calculate nearbyTrees
+		            //TreeGrouper.buildTreeSets(trees);
+		            //forestFire.rebuildTreeSets();
+		            
+		            // Unfinished
+		        }
+			}
+		});
 		
 		jpViewFire.add(new JLabel("  Burn Radius"));
-		jpViewFire.add(new JSlider());
-		
+		jpViewFire.add(burnSlider);
+
 		jmFire.add(jpViewFire);
 
 		// Menu items (Help)
@@ -106,8 +174,14 @@ public class Main {
 		JMenuItem jmiTutorial = new JMenuItem("Tutorial");
 		
 		// Add functionality to menu items
-		jmiEdit.addActionListener(e -> {
+		jmiEditMap.addActionListener(e -> {
 			forestFire.setEditMode(true);
+			jmiEditMap.setEnabled(false);
+		});
+		
+		// Append functionality with parent's behavior
+		forestFire.getEditButtons().getFinishButton().addActionListener(e -> {
+			jmiEditMap.setEnabled(true);
 		});
 		
 		jmiExit.addActionListener(e -> {
@@ -116,10 +190,10 @@ public class Main {
 		
 		// Add items to menus
 		jmFile.add(jmiNewMap);
-		jmFile.add(jmiEdit);
+		jmFile.add(jmiEditMap);
 		jmFile.addSeparator();
-		jmFile.add(jmiSave);
-		jmFile.add(jmiLoad);
+		jmFile.add(jmiSaveMap);
+		jmFile.add(jmiLoadMap);
 		jmFile.addSeparator();
 		jmFile.add(jmiExit);
 		jmOptions.add(jmView);
