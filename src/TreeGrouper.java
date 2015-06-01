@@ -18,10 +18,10 @@ public class TreeGrouper {
 	public static void buildTreeSets(Tree[] trees) {
 		for (int i = 0; i < trees.length; i++) {
 			// Establish nearby square area
-			int x1 = trees[i].getX() - ForestFire.BURN_RADIUS;
-			int x2 = trees[i].getX() + ForestFire.BURN_RADIUS;
-			int y1 = trees[i].getY() - ForestFire.BURN_RADIUS;
-			int y2 = trees[i].getY() + ForestFire.BURN_RADIUS;
+			int x1 = trees[i].getX() - ForestFire.burnRadius;
+			int x2 = trees[i].getX() + ForestFire.burnRadius;
+			int y1 = trees[i].getY() - ForestFire.burnRadius;
+			int y2 = trees[i].getY() + ForestFire.burnRadius;
 
 			if (x1 < 0)      { x1 = 0; } 
 			if (x2 > ForestFire.width)  { x2 = ForestFire.width;  }
@@ -58,7 +58,7 @@ public class TreeGrouper {
 				int value = (nearbyX - originX) * (nearbyX - originX) 
 						+ (nearbyY - originY) * (nearbyY - originY);
 				
-				if (value <= ForestFire.BURN_RADIUS_SQR) {
+				if (value <= ForestFire.burnRadiusSqr) {
 					if (!trees[i].equals(tempTreesB.get(j))) {
 						trees[i].addNearbyTree(tempTreesB.get(j));
 					}
