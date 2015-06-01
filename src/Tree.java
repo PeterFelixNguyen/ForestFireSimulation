@@ -41,6 +41,10 @@ public class Tree {
 		return nearbyTrees;
 	}
 	
+	public void clearNearbyTrees() {
+		nearbyTrees.clear();
+	}
+	
 	public Tree(int x, int y) {
 		initialFireIndex = (int) (Math.random() * 3 + 1);
 		fireIndex = initialFireIndex;
