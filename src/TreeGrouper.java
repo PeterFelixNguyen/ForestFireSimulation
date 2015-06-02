@@ -10,18 +10,17 @@
 import java.util.ArrayList;
 import java.util.Collections;
 
-
 public class TreeGrouper {
 	private static ArrayList<Tree> tempTreesA = new ArrayList<Tree>();
 	private static ArrayList<Tree> tempTreesB = new ArrayList<Tree>();
 	
-	public static void buildTreeSets(Tree[] trees) {
-		for (int i = 0; i < trees.length; i++) {
+	public static void buildTreeSets(ArrayList<Tree> trees) {		
+		for (int i = 0; i < trees.size(); i++) {				
 			// Establish nearby square area
-			int x1 = trees[i].getX() - ForestFire.burnRadius;
-			int x2 = trees[i].getX() + ForestFire.burnRadius;
-			int y1 = trees[i].getY() - ForestFire.burnRadius;
-			int y2 = trees[i].getY() + ForestFire.burnRadius;
+			int x1 = trees.get(i).getX() - ForestFire.burnRadius;
+			int x2 = trees.get(i).getX() + ForestFire.burnRadius;
+			int y1 = trees.get(i).getY() - ForestFire.burnRadius;
+			int y2 = trees.get(i).getY() + ForestFire.burnRadius;
 
 			if (x1 < 0)      { x1 = 0; } 
 			if (x2 > ForestFire.width)  { x2 = ForestFire.width;  }
@@ -33,7 +32,7 @@ public class TreeGrouper {
 			int yEnd = yBinarySearch(trees, y2);
 			
 			for (; y <= yEnd; y++) {
-				tempTreesA.add(trees[y]);
+				tempTreesA.add(trees.get(y));
 			}			
 			Collections.sort(tempTreesA, new TreeXComparator());
 			
@@ -48,8 +47,8 @@ public class TreeGrouper {
 			//System.out.print("[" + trees[i].getX() + "," + trees[i].getY() + "] " + "size: " + tempTreesB.size());
 			
 			for (int j = 0; j < tempTreesB.size(); j++) {
-				int originX = trees[i].getX();
-				int originY = trees[i].getY();
+				int originX = trees.get(i).getX();
+				int originY = trees.get(i).getY();
 				int nearbyX = tempTreesB.get(j).getX();
 				int nearbyY = tempTreesB.get(j).getY();
 				
@@ -59,8 +58,8 @@ public class TreeGrouper {
 						+ (nearbyY - originY) * (nearbyY - originY);
 				
 				if (value <= ForestFire.burnRadiusSqr) {
-					if (!trees[i].equals(tempTreesB.get(j))) {
-						trees[i].addNearbyTree(tempTreesB.get(j));
+					if (!trees.get(i).equals(tempTreesB.get(j))) {
+						trees.get(i).addNearbyTree(tempTreesB.get(j));
 					}
 				}
 			}
@@ -88,7 +87,27 @@ public class TreeGrouper {
 		return mid; // not found
 	}
 	
-	public int xBinarySearch(Tree[] trees, int key) {
+	public static int yBinarySearch(ArrayList<Tree> trees, int key) {
+		int low = 0;
+		int high = trees.size() - 1;
+		
+		int mid = (low + high) / 2;
+		
+		while (high >= low) {
+			mid = (low + high) / 2;
+			if (key < trees.get(mid).getY()) {
+				high = mid - 1;
+			} else if (key == trees.get(mid).getY()) {
+				return mid;
+			} else {
+				low = mid + 1;
+			}
+		}
+		
+		return mid; // not found
+	}
+	
+	public static int xBinarySearch(Tree[] trees, int key) {
 		int low = 0;
 		int high = trees.length - 1;
 		

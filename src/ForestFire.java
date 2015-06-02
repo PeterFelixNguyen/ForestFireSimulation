@@ -35,7 +35,6 @@ import java.awt.image.BufferedImage;
 import java.awt.image.VolatileImage;
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.Set;
@@ -92,7 +91,7 @@ public class ForestFire extends JPanel implements ActionListener {
 	
 	// Tree objects
 	private static int numTrees;
-	private static Tree[] sortedTrees;
+	private static ArrayList<Tree> sortedTrees;
 	
 	// Tree and fire characteristics
 	public final static int TREE_DIAMETER = 20;
@@ -253,9 +252,9 @@ public class ForestFire extends JPanel implements ActionListener {
 		System.out.println("numTrees = " + numTrees);
 		
 		// Create array of trees and sort them
-		sortedTrees = new Tree[numTrees];
+		sortedTrees = new ArrayList<Tree>();
 		makeTrees(2);
-		
+
 		// Add neighboring trees to each tree
 		TreeGrouper.buildTreeSets(sortedTrees);
 
@@ -578,7 +577,7 @@ public class ForestFire extends JPanel implements ActionListener {
 		int yEnd = TreeGrouper.yBinarySearch(sortedTrees, y2 - (TREE_DIAMETER / 2));
 
 		for (; y <= yEnd; y++) {
-			tempTreesA.add(sortedTrees[y]);
+			tempTreesA.add(sortedTrees.get(y));
 		}
 		Collections.sort(tempTreesA, new TreeXComparator());
 
@@ -872,19 +871,19 @@ public class ForestFire extends JPanel implements ActionListener {
 		}
 		
 		for (int i = 0; i < numTrees; i++) {
-			int x = sortedTrees[i].getX();
-			int y = sortedTrees[i].getY();
+			int x = sortedTrees.get(i).getX();
+			int y = sortedTrees.get(i).getY();
 
 			// Draw circular trees
-			if (sortedTrees[i].type == Tree.CIRCLE) {
-				if (sortedTrees[i].getState() != Tree.BLACK) {
+			if (sortedTrees.get(i).type == Tree.CIRCLE) {
+				if (sortedTrees.get(i).getState() != Tree.BLACK) {
 					g.drawImage(ViTreeO, x, y, this);
 				} else {
 					g.drawImage(viTreeOBurnt, x, y, this);
 				}
-			} else if (sortedTrees[i].type == Tree.TRIANGLE) {
+			} else if (sortedTrees.get(i).type == Tree.TRIANGLE) {
 				// Draw triangular trees
-				if (sortedTrees[i].getState() != Tree.BLACK) {
+				if (sortedTrees.get(i).getState() != Tree.BLACK) {
 					g.drawImage(viTreeA, x, y, this);				
 				} else {
 					g.drawImage(viTreeABurnt, x, y, this);
@@ -892,16 +891,16 @@ public class ForestFire extends JPanel implements ActionListener {
 			}
 
 			// Fire animation
-			if (sortedTrees[i].getState() == Tree.RED) {
+			if (sortedTrees.get(i).getState() == Tree.RED) {
 				
-				if (sortedTrees[i].fireIndex < ANIMATION_LENGTH - 1 && firstAltSequenceCounter % 3 == 0) {
+				if (sortedTrees.get(i).fireIndex < ANIMATION_LENGTH - 1 && firstAltSequenceCounter % 3 == 0) {
 					if (!paused) {
 						firstAltSequenceCounter = 0;
-						sortedTrees[i].tick();
+						sortedTrees.get(i).tick();
 					}
 				}
 
-				g2d.drawImage(vfireAnimation[sortedTrees[i].fireIndex], x, y - 6, this);
+				g2d.drawImage(vfireAnimation[sortedTrees.get(i).fireIndex], x, y - 6, this);
 			}
 		}
 			
@@ -919,24 +918,24 @@ public class ForestFire extends JPanel implements ActionListener {
 			int x = (int) (10 + Math.random() * (width - TREE_DIAMETER - 15));
 			int y = (int) (10 + Math.random() * (height - 50 - heightOfOtherComponents));
 
-			sortedTrees[i] = new Tree(x, y);
+			sortedTrees.add(new Tree(x, y));
 		}
 		
 		// Set initial burning tree
 		boolean isAutoBurn = false;
 
 		// If flag is true, set initial tree to burn
-		if (isAutoBurn && sortedTrees.length > 0) {
-			sortedTrees[0].setState(Tree.RED);
-			ignitedTrees.add(sortedTrees[0]);
+		if (isAutoBurn && sortedTrees.size() > 0) {
+			sortedTrees.get(0).setState(Tree.RED);
+			ignitedTrees.add(sortedTrees.get(0));
 		}
 
 		// Different sort methods are for my own learning
 		if (sortMethod == 1) {
-			Arrays.sort(sortedTrees, new TreeXComparator());
-			Arrays.sort(sortedTrees, new TreeYComparator());
+			Collections.sort(sortedTrees, new TreeXComparator());
+			Collections.sort(sortedTrees, new TreeYComparator());
 		} else if (sortMethod == 2) {
-			Arrays.sort(sortedTrees, new TreeComparator());
+			Collections.sort(sortedTrees, new TreeComparator());
 		} else {
 			System.out.println("Invalid sort method, trees are unsorted");
 		}
@@ -1007,8 +1006,8 @@ public class ForestFire extends JPanel implements ActionListener {
 	}
 	
 	public void rebuildTreeSets() {
-		for (int i = 0; i < sortedTrees.length; i++) {
-			sortedTrees[i].clearNearbyTrees();
+		for (int i = 0; i < sortedTrees.size(); i++) {
+			sortedTrees.get(i).clearNearbyTrees();
 		}
 		
 		TreeGrouper.buildTreeSets(sortedTrees);
@@ -1159,7 +1158,7 @@ public class ForestFire extends JPanel implements ActionListener {
 					if (!timerSimulation.isRunning() && !timerReplay.isRunning()) {
 						
 						// Create array of trees and sort them
-						sortedTrees = new Tree[numTrees];
+						sortedTrees = new ArrayList<Tree>();
 						makeTrees(2);
 						
 						// Add neighboring trees to each tree
@@ -1324,7 +1323,7 @@ public class ForestFire extends JPanel implements ActionListener {
 					if (!timerSimulation.isRunning() && !timerReplay.isRunning()) {
 						
 						// Create array of trees and sort them
-						sortedTrees = new Tree[numTrees];
+						sortedTrees = new ArrayList<Tree>();
 						makeTrees(2);
 						
 						// Add neighboring trees to each tree
@@ -1478,9 +1477,9 @@ public class ForestFire extends JPanel implements ActionListener {
 				
 				for (int i = 0; i < numTrees; i++) {
 					// Fire animation (not drawn)
-					if (sortedTrees[i].getState() == Tree.RED) {
-							if (sortedTrees[i].fireIndex < ANIMATION_LENGTH - 1) {
-								sortedTrees[i].tick();
+					if (sortedTrees.get(i).getState() == Tree.RED) {
+							if (sortedTrees.get(i).fireIndex < ANIMATION_LENGTH - 1) {
+								sortedTrees.get(i).tick();
 							}
 						}
 				}
