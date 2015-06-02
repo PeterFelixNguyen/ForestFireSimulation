@@ -41,10 +41,16 @@ Links that helped me6. Rain, wind, lightning, and weather.
 
 # Links that helped me
 
-## Hardware accelerated graphics
+## Hardware Accelerated Graphics
 1. http://content.gpwiki.org/index.php/Java:Tutorials:VolatileImage
 2. https://docs.oracle.com/javase/8/docs/api/java/awt/image/VolatileImage.html
 3. https://docs.oracle.com/javase/tutorial/2d/advanced/compositing.html
 
 ## Miscellaneous 
 1. http://stackoverflow.com/questions/3680221/how-can-i-get-the-monitor-size-in-java
+
+## Layout Help
+1. http://stackoverflow.com/questions/2411197/setting-panel-at-center-of-screen-by-using-layout
+
+# Look and Feel
+http://stackoverflow.com/questions/15260484/java-swing-how-to-change-the-font-size-on-a-jpanels-titledborder
