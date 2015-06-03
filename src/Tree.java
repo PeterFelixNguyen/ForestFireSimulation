@@ -13,8 +13,8 @@ public class Tree {
 	// Characteristics
 	public final int x;
 	public final int y;
-	private int initialFireIndex;
-	private int fireIndex;
+	private int initialHealth;
+	private int health;
 	
 	// States
 	private String state;
@@ -46,8 +46,8 @@ public class Tree {
 	}
 	
 	public Tree(int x, int y) {
-		initialFireIndex = (int) (Math.random() * 3 + 1);
-		fireIndex = initialFireIndex;
+		initialHealth = (int) (Math.random() * 3 + 1);
+		health = initialHealth;
 		state = GREEN;
 		
 		isHomogenous = false;
@@ -99,7 +99,7 @@ public class Tree {
 
 	public void resetState() {
 		this.state = GREEN;
-		fireIndex = initialFireIndex;
+		health = initialHealth;
 	}
 	
 	public int getX() {
@@ -118,14 +118,14 @@ public class Tree {
 		return y + (ForestFire.TREE_DIAMETER / 2);
 	}
 	
-	public void tick() {
-		fireIndex++;
-		if (fireIndex == 74) {
+	public void tickHealth() {
+		health++;
+		if (health == 74) {
 			setState(BLACK);
 		}
 	}
 	
-	public int getTick() {
-		return fireIndex;
+	public int getHealth() {
+		return health;
 	}
 }

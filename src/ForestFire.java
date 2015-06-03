@@ -897,19 +897,19 @@ public class ForestFire extends JPanel implements ActionListener {
 			// Fire animation
 			if (sortedTrees.get(i).getState().equals(Tree.RED)) {
 				
-				if (sortedTrees.get(i).getTick() < ANIMATION_LENGTH - 1 && firstAltSequenceCounter % 3 == 0) {
+				if (sortedTrees.get(i).getHealth() < ANIMATION_LENGTH - 1 && firstAltSequenceCounter % 3 == 0) {
 					if (!paused) {
 						firstAltSequenceCounter = 0;
-						sortedTrees.get(i).tick();
+						sortedTrees.get(i).tickHealth();
 					}
 				}
 
-				g2d.drawImage(vfireAnimation[sortedTrees.get(i).getTick()], x, y - 6, this);
+				g2d.drawImage(vfireAnimation[sortedTrees.get(i).getHealth()], x, y - 6, this);
 			}
 			
 			// Draw current life of tree
 			if (healthOverlayEnabled && sortedTrees.get(i).getState().equals(Tree.RED)) {
-				char[] ch = Integer.toString(sortedTrees.get(i).getTick() + 1).toCharArray();
+				char[] ch = Integer.toString(sortedTrees.get(i).getHealth() + 1).toCharArray();
 				// Does this need to be hardware accelerated?
 				g.drawChars(ch, 0, ch.length, x, y);
 			}
@@ -1489,8 +1489,8 @@ public class ForestFire extends JPanel implements ActionListener {
 				for (int i = 0; i < numTrees; i++) {
 					// Fire animation (not drawn)
 					if (sortedTrees.get(i).getState().equals(Tree.RED)) {
-						if (sortedTrees.get(i).getTick() < ANIMATION_LENGTH - 1) {
-								sortedTrees.get(i).tick();
+						if (sortedTrees.get(i).getHealth() < ANIMATION_LENGTH - 1) {
+								sortedTrees.get(i).tickHealth();
 						}
 					}
 				}
