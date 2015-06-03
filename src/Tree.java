@@ -13,8 +13,8 @@ public class Tree {
 	// Characteristics
 	public final int x;
 	public final int y;
-	public int initialFireIndex;
-	public int fireIndex;
+	private int initialFireIndex;
+	private int fireIndex;
 	
 	// States
 	private String state;
@@ -123,5 +123,9 @@ public class Tree {
 		if (fireIndex == 74) {
 			setState(BLACK);
 		}
+	}
+	
+	public int getTick() {
+		return fireIndex;
 	}
 }

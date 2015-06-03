@@ -54,13 +54,13 @@ import com.jd.swing.util.Theme;
 @SuppressWarnings("serial")
 public class ForestFire extends JPanel implements ActionListener {
 	// Constants to specify map resolution
-	private final static String RESOLUTION_WVGA = "800x480";
-	private final static String RESOLUTION_WSVGA = "1024x600";
-	private final static String RESOLUTION_ASUS = "1800x900";
-	private final static String RESOLUTION_ALIEN = "1200x600";
-	private final static String RESOLUTION_DEVICE = "DEVICE";
-	private final static int WIDTH_DEFAULT = 1200;
-	private final static int HEIGHT_DEFAULT = 600;
+	public final static String RESOLUTION_WVGA = "800x480";
+	public final static String RESOLUTION_WSVGA = "1024x600";
+	public final static String RESOLUTION_ASUS = "1800x900";
+	public final static String RESOLUTION_ALIEN = "1200x600";
+	public final static String RESOLUTION_DEVICE = "DEVICE";
+	public final static int WIDTH_DEFAULT = 1200;
+	public final static int HEIGHT_DEFAULT = 600;
 	public final static int WIDTH_TEST = 1200;
 	public final static int HEIGHT_TEST = 600;
 
@@ -78,8 +78,8 @@ public class ForestFire extends JPanel implements ActionListener {
 	public static final double POPULATION_XXXXSMALL = 0.00015;
 	
 	// Constants to specify percentage of trees for testing 
-	public static final double POPULATION_MEGALARGE = 0.01000;
-	public static final double POPULATION_MEGASMALL = 0.00001;
+	public static final double POPULATION_ULTRALARGE = 0.01000;
+	public static final double POPULATION_ULTRASMALL = 0.00001;
 
 	// Resolution options
 	private static String resolution = "";
@@ -200,6 +200,7 @@ public class ForestFire extends JPanel implements ActionListener {
 
 	// Boolean View Flags
 	private boolean positionOverlayEnabled = false;
+	private boolean healthOverlayEnabled = false;
 	
 	// Boolean Mouse Flags
 	private boolean mousePressedLeft = false;
@@ -507,7 +508,7 @@ public class ForestFire extends JPanel implements ActionListener {
 							Tree[] nearbyTrees = (Tree[]) ignitedTreesArray[i].getNearbyTrees().toArray(new Tree[nearbySize]);
 
 							for (int j = 0; j < nearbyTrees.length; j++) {
-								if (nearbyTrees[j].getState() == Tree.GREEN) {
+								if (nearbyTrees[j].getState().equals(Tree.GREEN)) {
 									newlyIgnitedTrees.add(nearbyTrees[j]);
 								}
 								nearbyTrees[j].setState(Tree.RED);
@@ -543,7 +544,7 @@ public class ForestFire extends JPanel implements ActionListener {
 		
 		// Continue subcomponents
 		upperPanel.add(mapButtons = new MapButtons());
-		upperPanel.setBackground(new Color(215,199,151));
+		upperPanel.setBackground(LookAndFeel.COLOR_PANELS);
 		upperPanel.setSize(new Dimension(width, 70));
 		upperPanel.setMinimumSize(new Dimension(width, 70));
 		upperPanel.setMaximumSize(new Dimension(width, 70));		
@@ -865,6 +866,9 @@ public class ForestFire extends JPanel implements ActionListener {
 		g.setColor(new Color(90, 170, 90));
 		g.fillRect(0, 0, width, height - heightOfOtherComponents);
 
+		// Go back to black
+		g.setColor(new Color(0,0,0));
+		
 		// For all trees
 		if (!paused) {
 			firstAltSequenceCounter++;
@@ -876,14 +880,14 @@ public class ForestFire extends JPanel implements ActionListener {
 
 			// Draw circular trees
 			if (sortedTrees.get(i).type == Tree.CIRCLE) {
-				if (sortedTrees.get(i).getState() != Tree.BLACK) {
+				if (!sortedTrees.get(i).getState().equals(Tree.BLACK)) {
 					g.drawImage(ViTreeO, x, y, this);
 				} else {
 					g.drawImage(viTreeOBurnt, x, y, this);
 				}
 			} else if (sortedTrees.get(i).type == Tree.TRIANGLE) {
 				// Draw triangular trees
-				if (sortedTrees.get(i).getState() != Tree.BLACK) {
+				if (!sortedTrees.get(i).getState().equals(Tree.BLACK)) {
 					g.drawImage(viTreeA, x, y, this);				
 				} else {
 					g.drawImage(viTreeABurnt, x, y, this);
@@ -891,16 +895,23 @@ public class ForestFire extends JPanel implements ActionListener {
 			}
 
 			// Fire animation
-			if (sortedTrees.get(i).getState() == Tree.RED) {
+			if (sortedTrees.get(i).getState().equals(Tree.RED)) {
 				
-				if (sortedTrees.get(i).fireIndex < ANIMATION_LENGTH - 1 && firstAltSequenceCounter % 3 == 0) {
+				if (sortedTrees.get(i).getTick() < ANIMATION_LENGTH - 1 && firstAltSequenceCounter % 3 == 0) {
 					if (!paused) {
 						firstAltSequenceCounter = 0;
 						sortedTrees.get(i).tick();
 					}
 				}
 
-				g2d.drawImage(vfireAnimation[sortedTrees.get(i).fireIndex], x, y - 6, this);
+				g2d.drawImage(vfireAnimation[sortedTrees.get(i).getTick()], x, y - 6, this);
+			}
+			
+			// Draw current life of tree
+			if (healthOverlayEnabled && sortedTrees.get(i).getState().equals(Tree.RED)) {
+				char[] ch = Integer.toString(sortedTrees.get(i).getTick() + 1).toCharArray();
+				// Does this need to be hardware accelerated?
+				g.drawChars(ch, 0, ch.length, x, y);
 			}
 		}
 			
@@ -959,7 +970,7 @@ public class ForestFire extends JPanel implements ActionListener {
 					Tree[] nearbyTrees = (Tree[]) ignitedTreesArray[i].getNearbyTrees().toArray(new Tree[nearbySize]);
 
 					for (int j = 0; j < nearbyTrees.length; j++) {
-						if (nearbyTrees[j].getState() == Tree.GREEN) {
+						if (nearbyTrees[j].getState().equals(Tree.GREEN)) {
 							newlyIgnitedTrees.add(nearbyTrees[j]);
 						}
 						nearbyTrees[j].setState(Tree.RED);
@@ -1003,6 +1014,10 @@ public class ForestFire extends JPanel implements ActionListener {
 	
 	public void setViewPositionEnabled(boolean positionOverlayEnabled) {
 		this.positionOverlayEnabled = positionOverlayEnabled;
+	}
+	
+	public void setViewTreeHealthEnabled(boolean healthOverlayEnabled) {
+		this.healthOverlayEnabled = healthOverlayEnabled;
 	}
 	
 	public void rebuildTreeSets() {
@@ -1198,11 +1213,7 @@ public class ForestFire extends JPanel implements ActionListener {
 			
 			// Button bar for user controls and settings
 			setOpaque(false);
-//			setLayout(new FlowLayout(FlowLayout.LEFT));
-//			setBackground(new Color(215,199,151));
-//			setSize(new Dimension(width, 70));
-//			setMinimumSize(new Dimension(width, 70));
-//			setMaximumSize(new Dimension(width, 70));		
+
 			add(groupPlayback);
 			add(groupSpeed);
 			add(groupConfigure);
@@ -1477,11 +1488,11 @@ public class ForestFire extends JPanel implements ActionListener {
 				
 				for (int i = 0; i < numTrees; i++) {
 					// Fire animation (not drawn)
-					if (sortedTrees.get(i).getState() == Tree.RED) {
-							if (sortedTrees.get(i).fireIndex < ANIMATION_LENGTH - 1) {
+					if (sortedTrees.get(i).getState().equals(Tree.RED)) {
+						if (sortedTrees.get(i).getTick() < ANIMATION_LENGTH - 1) {
 								sortedTrees.get(i).tick();
-							}
 						}
+					}
 				}
 				
 				while (clickHistoryStack.size() > 0 && replayTick == clickHistoryStack.get(0).getTick()) {
@@ -1506,7 +1517,7 @@ public class ForestFire extends JPanel implements ActionListener {
 						Tree[] nearbyTrees = (Tree[]) ignitedTreesArray[i].getNearbyTrees().toArray(new Tree[nearbySize]);
 
 						for (int j = 0; j < nearbyTrees.length; j++) {
-							if (nearbyTrees[j].getState() == Tree.GREEN) {
+							if (nearbyTrees[j].getState().equals(Tree.GREEN)) {
 								newlyIgnitedTrees.add(nearbyTrees[j]);
 							}
 							nearbyTrees[j].setState(Tree.RED);
