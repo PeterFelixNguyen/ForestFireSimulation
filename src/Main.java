@@ -1,11 +1,23 @@
+/**
+ * Copyright 2015 Peter "Felix" Nguyen & Emmanuel Medina Lopez
+ * 
+ * Forest Fire Simulation with 2D Graphics.
+ * 
+ * Main contains the main method and top-level GUI components
+ */
 import java.awt.Color;
+import java.awt.Component;
 import java.awt.Dialog.ModalityType;
 import java.awt.Dimension;
 import java.awt.FlowLayout;
+import java.awt.Font;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
 import java.awt.event.ItemEvent;
 import java.awt.event.ItemListener;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
+import java.awt.event.MouseMotionListener;
 
 import javax.swing.BorderFactory;
 import javax.swing.Box;
@@ -13,13 +25,20 @@ import javax.swing.BoxLayout;
 import javax.swing.JCheckBoxMenuItem;
 import javax.swing.JComboBox;
 import javax.swing.JDialog;
+import javax.swing.JFormattedTextField;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.JMenu;
 import javax.swing.JMenuBar;
 import javax.swing.JMenuItem;
 import javax.swing.JPanel;
+import javax.swing.JSeparator;
 import javax.swing.JSlider;
+import javax.swing.JSpinner;
+import javax.swing.SpinnerListModel;
+import javax.swing.SwingConstants;
+import javax.swing.border.CompoundBorder;
+import javax.swing.border.TitledBorder;
 import javax.swing.event.ChangeEvent;
 import javax.swing.event.ChangeListener;
 
@@ -62,7 +81,6 @@ public class Main {
 		
 		// Container to lay out the map and button bar
 		JPanel fullInterface = new JPanel();
-		fullInterface.setBorder(BorderFactory.createLineBorder(Color.BLACK, 2));
 		fullInterface.setLayout(new BoxLayout(fullInterface, BoxLayout.Y_AXIS));
 		fullInterface.add(forestFire.getUpperPanel());
 		fullInterface.add(forestFire);
@@ -166,7 +184,7 @@ public class Main {
 		JPanel clickSliderRow1 = new JPanel(new FlowLayout(FlowLayout.CENTER)); 
 		clickSliderRow1.setMaximumSize(new Dimension(Integer.MAX_VALUE, 20));
 		clickSliderRow1.add(new JLabel("Click Radius"));
-		clickSliderRow1.setBackground(LookAndFeel.COLOR_PANELS);
+		clickSliderRow1.setBackground(LookAndFeel.COLOR_SOLID_PANELS);
 		JPanel clickSliderRow2 = new JPanel(new FlowLayout(FlowLayout.CENTER)); 
 		
 		clickSliderRow2.add(clickSlider);
@@ -207,7 +225,7 @@ public class Main {
 		JPanel burnSliderRow1 = new JPanel(new FlowLayout(FlowLayout.CENTER)); 
 		burnSliderRow1.setMaximumSize(new Dimension(Integer.MAX_VALUE, 20));
 		burnSliderRow1.add(new JLabel("Burn Radius"));
-		burnSliderRow1.setBackground(LookAndFeel.COLOR_PANELS);
+		burnSliderRow1.setBackground(LookAndFeel.COLOR_SOLID_PANELS);
 		JPanel burnSliderRow2 = new JPanel(new FlowLayout(FlowLayout.CENTER)); 
 		
 		burnSliderRow2.add(burnSlider);
@@ -216,23 +234,32 @@ public class Main {
 		jpViewFire.add(burnSliderContainer);
 
 		jmFire.add(jpViewFire);
-
+		
 		// Menu items (Help)
 		JMenuItem jmiAbout = new JMenuItem("About");
 		JMenuItem jmiTutorial = new JMenuItem("Tutorial");
 		
 		// Add functionality to menu items START
 		JDialog jdNewMap = new JDialog();
+		
+		// Transparency tweak START
+		jdNewMap.setUndecorated(true);
+		jdNewMap.getRootPane().setOpaque(false);
+		jdNewMap.getContentPane().setBackground(new Color(0, 0, 0, 0));
+		jdNewMap.setBackground(new Color(0, 0, 0, 0));
+		// Transparency tweak FINISH
+		
 		jdNewMap.setUndecorated(true);
 		jdNewMap.setAlwaysOnTop(false);
 		jdNewMap.setModalityType(ModalityType.APPLICATION_MODAL);
 		jdNewMap.setModal(true);
-		JPanel jpNewMap = new JPanel();
-		jpNewMap.setBackground(LookAndFeel.COLOR_BLACK);
-				
-		JPanel panel = new JPanel();
-		panel.setLayout(new BoxLayout(panel, BoxLayout.Y_AXIS));
-		panel.setBackground(LookAndFeel.COLOR_PANELS);
+
+		JPanel innerPanelNewMap = new JPanel();
+		innerPanelNewMap.setLayout(new BoxLayout(innerPanelNewMap, BoxLayout.Y_AXIS));
+		innerPanelNewMap.setBackground(LookAndFeel.COLOR_SOLID_PANELS);
+		Font font = new Font(innerPanelNewMap.getFont().getFontName(), Font.BOLD, 14);
+		CompoundBorder compoundBorder = new CompoundBorder(BorderFactory.createLineBorder(new Color(55, 50, 22), 4), BorderFactory.createTitledBorder(BorderFactory.createLineBorder(Color.BLACK, 2), "Configure New Map", TitledBorder.CENTER, TitledBorder.CENTER, font));
+		innerPanelNewMap.setBorder(compoundBorder);
 		
 		JComboBox<String> jcbPopulation = new JComboBox<String>();
 		jcbPopulation.setMaximumRowCount(15);
@@ -260,43 +287,171 @@ public class Main {
 		jcbMapSize.addItem(ForestFire.RESOLUTION_ALIEN);
 		jcbMapSize.setSelectedIndex(0);
 
-		JPanel row1 = new JPanel(new FlowLayout(FlowLayout.LEFT));
-		row1.setOpaque(false);
-		JPanel row2 = new JPanel(new FlowLayout(FlowLayout.LEFT));
-		row2.setOpaque(false);
-		JPanel row3 = new JPanel(new FlowLayout(FlowLayout.LEFT));
-		row3.setOpaque(false);
-		JPanel row4 = new JPanel(new FlowLayout(FlowLayout.LEFT));
-		row4.setOpaque(false);
-		JPanel row5 = new JPanel(new FlowLayout(FlowLayout.LEFT));
-		row5.setOpaque(false);
+		JPanel innerPanelNewMapRow1 = new JPanel(new FlowLayout(FlowLayout.CENTER));
+		innerPanelNewMapRow1.setOpaque(false);
+		JPanel innerPanelNewMapRow2 = new JPanel(new FlowLayout(FlowLayout.CENTER));
+		innerPanelNewMapRow2.setOpaque(false);
+		JPanel innerPanelNewMapRow3 = new JPanel(new FlowLayout(FlowLayout.CENTER));
+		innerPanelNewMapRow3.setOpaque(false);
+		JPanel innerPanelNewMapRow4 = new JPanel(new FlowLayout(FlowLayout.CENTER));
+		innerPanelNewMapRow4.setOpaque(false);
+		JPanel innerPanelNewMapRow5 = new JPanel(new FlowLayout(FlowLayout.CENTER));
+		innerPanelNewMapRow5.setOpaque(false);
 		
 		StandardButton sbApply = new StandardButton("Apply", ButtonType.BUTTON_ROUNDED_RECTANGLUR, Theme.STANDARD_BLUEGREEN_THEME, Theme.STANDARD_PALEBROWN_THEME, Theme.STANDARD_BLACK_THEME);
 		StandardButton sbCancel = new StandardButton("Cancel", ButtonType.BUTTON_ROUNDED_RECTANGLUR, Theme.STANDARD_BLUEGREEN_THEME, Theme.STANDARD_PALEBROWN_THEME, Theme.STANDARD_BLACK_THEME);
 
-		row1.add(new JLabel("Tree Population"));
-		row2.add(jcbPopulation);
-		row3.add(new JLabel("Map Size"));
-		row4.add(jcbMapSize);
-		row5.add(sbApply);
-		row5.add(sbCancel);
+		// Spinner
+		String[] values = {"ULTRA SMALL", "XXXX SMALL", "XXX SMALL", "XX SMALL", "X SMALL", "SMALL", "MEDIUM", "LARGE", "X LARGE", "XX LARGE", "XXX LARGE", "XXXX LARGE", "ULTRA LARGE"};
+		SpinnerListModel listModel = new SpinnerListModel(values);
+		JSpinner jsPopulation = new JSpinner(listModel);
+		jsPopulation.setValue(values[6]); // This should be a variable for the current value
+		jsPopulation.setEditor(new JSpinner.DefaultEditor(jsPopulation));
 		
-		panel.add(row1);
-		panel.add(row2);
-		panel.add(row3);
-		panel.add(row4);
-		panel.add(row5);
-		panel.add(Box.createVerticalGlue());
-
-		panel.setBorder(BorderFactory.createTitledBorder(BorderFactory.createLineBorder(Color.BLACK, 2), "Configure New Map"));
-
+//		jsPopulation.getEditor().setMinimumSize(new JLabel("ULTRA LARGE").getSize());
+		Component mySpinnerEditor = jsPopulation.getEditor();
+		JFormattedTextField jftf = ((JSpinner.DefaultEditor) mySpinnerEditor).getTextField();
+		jftf.setColumns(8);
+		jftf.setHorizontalAlignment(SwingConstants.CENTER);
+		
+		// Remove all listeners to this component so selection is disabled
+		MouseMotionListener[] mouseMotionListeners = jftf.getMouseMotionListeners();
+		for (int i = 0; i < mouseMotionListeners.length; i ++) {
+			jftf.removeMouseMotionListener(mouseMotionListeners[i]);
+		}
+		
+		innerPanelNewMapRow1.add(new JLabel("Tree Population"));
+//		innerPanelNewMapRow2.add(jcbPopulation);
+		innerPanelNewMapRow2.add(jsPopulation);
+		innerPanelNewMapRow3.add(new JLabel("Map Size"));
+		innerPanelNewMapRow4.add(jcbMapSize);
+		innerPanelNewMapRow5.add(sbApply);
+		innerPanelNewMapRow5.add(sbCancel);
+		
+		innerPanelNewMap.add(innerPanelNewMapRow1);
+		innerPanelNewMap.add(innerPanelNewMapRow2);
+		innerPanelNewMap.add(new JSeparator(SwingConstants.HORIZONTAL));
+		innerPanelNewMap.add(innerPanelNewMapRow3);
+		innerPanelNewMap.add(innerPanelNewMapRow4);
+		innerPanelNewMap.add(new JSeparator(SwingConstants.HORIZONTAL));
+		innerPanelNewMap.add(innerPanelNewMapRow5);
+		innerPanelNewMap.add(Box.createVerticalGlue());
+		
+		JPanel jpNewMap = new JPanel();
+		jpNewMap.setBackground(LookAndFeel.COLOR_TRANSLUCENT_BLACK);
 		jpNewMap.setLayout(new GridBagLayout());
-		jpNewMap.add(panel, new GridBagConstraints());
+		jpNewMap.add(innerPanelNewMap, new GridBagConstraints());
 
 		jdNewMap.setContentPane(jpNewMap);
 		jdNewMap.setSize(ForestFire.width, ForestFire.height);
 		
+		jpNewMap.addMouseListener(new MouseAdapter() {
+
+			@Override
+			public void mouseReleased(MouseEvent me) {
+				jdNewMap.setVisible(false);					
+			}
+			
+		});
+
+		innerPanelNewMap.addMouseListener(new MouseAdapter() {
+
+			@Override
+			public void mouseReleased(MouseEvent me) {
+				// Do nothing
+				// This overrides the mouse listener in the parent (jpNewMap)
+				// Without this, clicking the child component will trigger setVisible(false)
+			}
+			
+		});
+		
+		JDialog jdAbout = new JDialog();
+		
+		// Transparency tweak START
+		jdAbout.setUndecorated(true);
+		jdAbout.getRootPane().setOpaque(false);
+		jdAbout.getContentPane().setBackground(new Color(0, 0, 0, 0));
+		jdAbout.setBackground(new Color(0, 0, 0, 0));
+		// Transparency tweak FINISH
+		
+		jdAbout.setUndecorated(true);
+		jdAbout.setAlwaysOnTop(false);
+		jdAbout.setModalityType(ModalityType.APPLICATION_MODAL);
+		jdAbout.setModal(true);
+		
+		AboutPanel aboutPanel = new AboutPanel();
+		aboutPanel.setBorder(BorderFactory.createLineBorder(new Color(55, 50, 22), 4));
+		aboutPanel.setBackground(LookAndFeel.COLOR_SOLID_PANELS);
+		
+		JPanel jpAbout = new JPanel(); 
+		jpAbout.setBackground(LookAndFeel.COLOR_TRANSLUCENT_BLACK);
+		jpAbout.setLayout(new GridBagLayout());
+		jpAbout.add(aboutPanel, new GridBagConstraints());
+
+		jdAbout.setContentPane(jpAbout);
+		jdAbout.setSize(ForestFire.width, ForestFire.height);
+
+		jpAbout.addMouseListener(new MouseAdapter() {
+
+			@Override
+			public void mouseReleased(MouseEvent me) {
+				jdAbout.setVisible(false);					
+			}
+			
+		});
+		
 		sbApply.addActionListener(e -> {
+//			int selectedPopulation = jcbPopulation.getSelectedIndex();
+//			forestFire.setPopulationFactorAndSize(selectedPopulation);
+//			int selectedMapSize = jcbPopulation.getSelectedIndex();
+			
+			// Temporary solution for JSpinner
+			System.out.println("Value: " + (String)jsPopulation.getValue());
+			
+			int selectedIndex = 0;
+			switch ((String)jsPopulation.getValue()) {
+				case "ULTRA LARGE":
+					selectedIndex = 0;
+					break;
+				case "XXXX LARGE":
+					selectedIndex = 1;
+					break;
+				case "XXX LARGE":
+					selectedIndex = 2;
+					break;
+				case "XX LARGE":
+					selectedIndex = 3;
+					break;
+				case "X LARGE":
+					selectedIndex = 4;
+					break;
+				case "LARGE":
+					selectedIndex = 5;
+					break;
+				case "MEDIUM":
+					selectedIndex = 6;
+					break;
+				case "SMALL":
+					selectedIndex = 7;
+					break;
+				case "X SMALL":
+					selectedIndex = 8;
+					break;
+				case "XX SMALL":
+					selectedIndex = 9;
+					break;
+				case "XXX SMALL":
+					selectedIndex = 10;
+					break;
+				case "XXXX SMALL":
+					selectedIndex = 11;
+					break;
+				case "ULTRA SMALL":
+					selectedIndex = 12;
+					break;
+			}
+			forestFire.setPopulationFactorAndSize(selectedIndex);
+			
 			jdNewMap.setVisible(false);
 		});
 		
@@ -306,6 +461,7 @@ public class Main {
 		});
 		
 		jmiNewMap.addActionListener(e -> {
+			forestFire.getMapButtons().pause();
 			jdNewMap.setVisible(true);
 		});
 		
@@ -318,6 +474,11 @@ public class Main {
 		forestFire.getEditButtons().getFinishButton().addActionListener(e -> {
 			jmiEditMap.setEnabled(true);
 		});
+		
+		jmiAbout.addActionListener(e -> {
+			jdAbout.setVisible(true);
+		});
+		
 		
 		jmiExit.addActionListener(e -> {
 			System.exit(0);
