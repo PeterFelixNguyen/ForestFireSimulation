@@ -56,4 +56,6 @@ Copyright Peter "Felix" Nguyen and Emmanuel Medina Lopez
 ## Look and Feel
 http://stackoverflow.com/questions/15260484/java-swing-how-to-change-the-font-size-on-a-jpanels-titledborder
 http://stackoverflow.com/questions/4631021/how-to-set-transparent-background-of-jdialog
-http://stackoverflow.com/questions/18935558/java-rounded-corners-on-jframe
+
+## Graphics and Drawing
+http://www.coderanch.com/t/336616/GUI/java/Center-Align-text-drawString
