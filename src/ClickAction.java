@@ -1,4 +1,11 @@
-
+/**
+ * Copyright 2015 Peter "Felix" Nguyen & Emmanuel Medina Lopez
+ * 
+ * Forest Fire Simulation with 2D Graphics.
+ * 
+ * ClickAction is an object used to store information on clicks for the purpose
+ * of implementing a script-based replay feature to the simulator.
+ */
 public class ClickAction {
 	private final int x;
 	private final int y;

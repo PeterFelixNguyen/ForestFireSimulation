@@ -1,4 +1,11 @@
 /**
+ * Copyright 2015 Peter "Felix" Nguyen & Emmanuel Medina Lopez
+ * 
+ * Forest Fire Simulation with 2D Graphics.
+ * 
+ * CustomSlider is a JSlider modified so that a click on the slider will 
+ * instantly position the track to the location of the click.
+ *
  * This solution is derived from: 
  * http://stackoverflow.com/questions/518471/jslider-question-position-after-leftclick
  */
