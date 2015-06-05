@@ -77,6 +77,10 @@ public class ForestFire extends JPanel implements ActionListener {
 	public static final double  POPULATION_XXXSMALL = 0.00025;
 	public static final double POPULATION_XXXXSMALL = 0.00015;
 	
+	// Map settings
+	private static double selectedPopulation;
+	private static String selectedMapSize;
+	
 	// Constants to specify percentage of trees for testing 
 	public static final double POPULATION_ULTRALARGE = 0.01000;
 	public static final double POPULATION_ULTRASMALL = 0.00001;
@@ -87,7 +91,7 @@ public class ForestFire extends JPanel implements ActionListener {
 	public static int height = HEIGHT_DEFAULT;
 	
 	// Adjust height for MenuBar, ButtonBar, and ReplaySlider, 
-	public static int heightOfOtherComponents = 120;
+	public static int heightOfOtherComponents = 112;
 	
 	// Tree objects
 	private static int numTrees;
@@ -164,9 +168,7 @@ public class ForestFire extends JPanel implements ActionListener {
 	private StandardButton sbNormal = new StandardButton("1.0x", ButtonType.BUTTON_ROUNDED_RECTANGLUR, Theme.STANDARD_BLUEGREEN_THEME, Theme.STANDARD_PALEBROWN_THEME, Theme.STANDARD_BLACK_THEME);
 	private StandardButton sbFast = new StandardButton("2.0x", ButtonType.BUTTON_ROUNDED_RECTANGLUR, Theme.STANDARD_BLUEGREEN_THEME, Theme.STANDARD_PALEBROWN_THEME, Theme.STANDARD_BLACK_THEME);
 	private StandardButton sbFaster = new StandardButton("4.0x", ButtonType.BUTTON_ROUNDED_RECTANGLUR, Theme.STANDARD_BLUEGREEN_THEME, Theme.STANDARD_PALEBROWN_THEME, Theme.STANDARD_BLACK_THEME);
-	private StandardButton sbEdit = new StandardButton("EDIT", ButtonType.BUTTON_ROUNDED_RECTANGLUR, Theme.STANDARD_BLUEGREEN_THEME, Theme.STANDARD_PALEBROWN_THEME, Theme.STANDARD_BLACK_THEME);
 	private StandardButton sbNew = new StandardButton("NEW", ButtonType.BUTTON_ROUNDED_RECTANGLUR, Theme.STANDARD_BLUEGREEN_THEME, Theme.STANDARD_PALEBROWN_THEME, Theme.STANDARD_BLACK_THEME);
-	private StandardButton sbOverlay = new StandardButton("OVERLAY", ButtonType.BUTTON_ROUNDED_RECTANGLUR, Theme.STANDARD_BLUEGREEN_THEME, Theme.STANDARD_PALEBROWN_THEME, Theme.STANDARD_BLACK_THEME);
 		
 	// Playback states
 	private static boolean paused = false;
@@ -249,7 +251,8 @@ public class ForestFire extends JPanel implements ActionListener {
 		}
 		
 		// numTrees = x-percentage of total pixels
-		numTrees = (int) (POPULATION_MEDIUM * (width * height));
+		selectedPopulation = POPULATION_MEDIUM;
+		setNumTrees(selectedPopulation);
 		System.out.println("numTrees = " + numTrees);
 		
 		// Create array of trees and sort them
@@ -544,7 +547,7 @@ public class ForestFire extends JPanel implements ActionListener {
 		
 		// Continue subcomponents
 		upperPanel.add(mapButtons = new MapButtons());
-		upperPanel.setBackground(LookAndFeel.COLOR_PANELS);
+		upperPanel.setBackground(LookAndFeel.COLOR_SOLID_PANELS);
 		upperPanel.setSize(new Dimension(width, 70));
 		upperPanel.setMinimumSize(new Dimension(width, 70));
 		upperPanel.setMaximumSize(new Dimension(width, 70));		
@@ -608,7 +611,6 @@ public class ForestFire extends JPanel implements ActionListener {
 					sbPause.setEnabled(true);
 					sbStop.setEnabled(true);
 					sbReplay.setEnabled(true);
-					sbEdit.setEnabled(false);
 					sbNew.setEnabled(false);
 					
 					clickHistory.clear();
@@ -1000,12 +1002,8 @@ public class ForestFire extends JPanel implements ActionListener {
 		if (editMode == true) {
 			getMapButtons().stop();
 			upperPanel.add(editButtons);
-			System.out.println("LAUNCH EDIT MODE");
-			// launch EditMode
 		} else {
 			upperPanel.add(mapButtons);
-			System.out.println("LAUNCH SIM MODE");
-			// launch SimMode
 		}
 		
 		upperPanel.repaint();
@@ -1026,6 +1024,59 @@ public class ForestFire extends JPanel implements ActionListener {
 		}
 		
 		TreeGrouper.buildTreeSets(sortedTrees);
+	}
+	
+	// I don't like how I am implementing setPopulation
+	public void setPopulationFactorAndSize(int selectedPopulation) {
+		switch (selectedPopulation) {
+		case 0: 
+			ForestFire.selectedPopulation = POPULATION_ULTRALARGE;
+			break;
+		case 1:
+			ForestFire.selectedPopulation = POPULATION_XXXXLARGE;
+			break;
+		case 2:
+			ForestFire.selectedPopulation = POPULATION_XXXLARGE;
+			break;
+		case 3:
+			ForestFire.selectedPopulation = POPULATION_XXLARGE;
+			break;
+		case 4:
+			ForestFire.selectedPopulation = POPULATION_XLARGE;
+			break;
+		case 5:
+			ForestFire.selectedPopulation = POPULATION_LARGE;
+			break;
+		case 6:
+			ForestFire.selectedPopulation = POPULATION_MEDIUM;
+			break;
+		case 7:
+			ForestFire.selectedPopulation = POPULATION_SMALL;
+			break;
+		case 8:
+			ForestFire.selectedPopulation = POPULATION_XSMALL;
+			break;
+		case 9:
+			ForestFire.selectedPopulation = POPULATION_XXSMALL;
+			break;
+		case 10:
+			ForestFire.selectedPopulation = POPULATION_XXXSMALL;
+			break;
+		case 11:
+			ForestFire.selectedPopulation = POPULATION_XXXXSMALL;
+			break;
+		case 12:
+			ForestFire.selectedPopulation = POPULATION_ULTRASMALL;
+			break;
+		default:
+			System.out.println("No Action");
+		}
+		
+		setNumTrees(ForestFire.selectedPopulation);
+	}
+	
+	public void setNumTrees(double populationFactor) {
+		numTrees = (int) (populationFactor * (width * height));
 	}
 	
 	class MapButtons extends JPanel {
@@ -1061,11 +1112,7 @@ public class ForestFire extends JPanel implements ActionListener {
 			sbPause.addActionListener(new ActionListener() {
 				@Override
 				public void actionPerformed(ActionEvent arg0) {
-						paused = true;
-						
-						sbPlay.setEnabled(true);
-						sbPause.setEnabled(false);
-						sbStop.setEnabled(true);
+					pause();
 				}
 			});
 
@@ -1111,7 +1158,6 @@ public class ForestFire extends JPanel implements ActionListener {
 					sbPause.setEnabled(true);
 					sbStop.setEnabled(true);
 					sbReplay.setEnabled(false);
-					sbEdit.setEnabled(false);
 					sbNew.setEnabled(false);
 				}
 			});
@@ -1207,9 +1253,7 @@ public class ForestFire extends JPanel implements ActionListener {
 			JPanel groupConfigure = new JPanel(new FlowLayout(FlowLayout.LEFT));
 			groupConfigure.setOpaque(false);
 			groupConfigure.setBorder(BorderFactory.createTitledBorder(BorderFactory.createLineBorder(Color.BLACK, 2), "Map"));
-			groupConfigure.add(sbEdit);
 			groupConfigure.add(sbNew);
-			groupConfigure.add(sbOverlay);
 			
 			// Button bar for user controls and settings
 			setOpaque(false);
@@ -1217,6 +1261,14 @@ public class ForestFire extends JPanel implements ActionListener {
 			add(groupPlayback);
 			add(groupSpeed);
 			add(groupConfigure);
+		}
+		
+		public void pause() {
+			paused = true;
+
+			sbPlay.setEnabled(true);
+			sbPause.setEnabled(false);
+			sbStop.setEnabled(true);
 		}
 		
 		public void stop() {
@@ -1244,7 +1296,6 @@ public class ForestFire extends JPanel implements ActionListener {
 			sbPause.setEnabled(false);
 			sbStop.setEnabled(false);
 			sbReplay.setEnabled(true);
-			sbEdit.setEnabled(true);
 			sbNew.setEnabled(true);
 			
 			ForestFire.this.repaint();
@@ -1465,12 +1516,7 @@ public class ForestFire extends JPanel implements ActionListener {
 			}
 		}
 		
-		public void doSamething() {
-			// move event handling code here
-		}
-		
 		public void rebuildStates() {
-
 			ignitedTrees.clear();
 			
 			for (Tree tree : sortedTrees) {
