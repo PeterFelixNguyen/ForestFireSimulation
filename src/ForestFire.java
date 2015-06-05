@@ -11,6 +11,7 @@ import java.awt.Color;
 import java.awt.Cursor;
 import java.awt.Dimension;
 import java.awt.FlowLayout;
+import java.awt.Font;
 import java.awt.GradientPaint;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
@@ -173,6 +174,7 @@ public class ForestFire extends JPanel implements ActionListener {
 	// Playback states
 	private static boolean paused = false;
 	private static boolean stopped = true;
+	private static boolean dialogOpen = false;
 	
 	// Speed states
 	private static final float speedSlow = 0.5f;
@@ -203,6 +205,9 @@ public class ForestFire extends JPanel implements ActionListener {
 	// Boolean View Flags
 	private boolean positionOverlayEnabled = false;
 	private boolean healthOverlayEnabled = false;
+	
+	// Boolean Playback Flags
+	private boolean clickUnpauses = true;
 	
 	// Boolean Mouse Flags
 	private boolean mousePressedLeft = false;
@@ -382,6 +387,10 @@ public class ForestFire extends JPanel implements ActionListener {
 					} else {
 						System.out.println("NO ACTION");
 					}
+				}
+				
+				if (paused && clickUnpauses) {
+					mapButtons.play();
 				}
 			}
 			
@@ -876,7 +885,7 @@ public class ForestFire extends JPanel implements ActionListener {
 			firstAltSequenceCounter++;
 		}
 		
-		for (int i = 0; i < numTrees; i++) {
+		for (int i = 0; i < sortedTrees.size(); i++) {
 			int x = sortedTrees.get(i).getX();
 			int y = sortedTrees.get(i).getY();
 
@@ -914,9 +923,33 @@ public class ForestFire extends JPanel implements ActionListener {
 				char[] ch = Integer.toString(sortedTrees.get(i).getHealth() + 1).toCharArray();
 				// Does this need to be hardware accelerated?
 				g.drawChars(ch, 0, ch.length, x, y);
+				// Why didn't I just use drawString?
 			}
 		}
 			
+		if (paused) {
+			g.setColor(LookAndFeel.COLOR_SOLID_DARK_TEXT);
+			g.setFont(new Font(g.getFont().getFontName(), Font.BOLD, 50));
+			
+			String string = "PAUSED";
+			
+			int stringWidth = (int)
+		            g2d.getFontMetrics().getStringBounds(string, g2d).getWidth();
+			int offsetX = width/2 - stringWidth/2;
+			
+			int stringHeight = (int)
+		            g2d.getFontMetrics().getStringBounds(string, g2d).getHeight();
+			int offsetY = height/2 - stringHeight/2;
+	        
+			g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+			g.drawString(string, offsetX, offsetY);
+			
+			if (!dialogOpen) {
+				g.setColor(LookAndFeel.COLOR_TRANSLUCENT_BLACK);
+				g.fillRect(0, 0, width, height);
+			}
+		}
+		
 		// Mouse cursor
 		if (fireCursorClicked) {
 			g2d.drawImage(viFireCursorRed, mouseXPosition - clickRadius, mouseYPosition - clickRadius, this);
@@ -1018,6 +1051,10 @@ public class ForestFire extends JPanel implements ActionListener {
 		this.healthOverlayEnabled = healthOverlayEnabled;
 	}
 	
+	public void setClickUnpauses(boolean clickUnpauses) {
+		this.clickUnpauses = clickUnpauses;
+	}
+	
 	public void rebuildTreeSets() {
 		for (int i = 0; i < sortedTrees.size(); i++) {
 			sortedTrees.get(i).clearNearbyTrees();
@@ -1101,31 +1138,27 @@ public class ForestFire extends JPanel implements ActionListener {
 			sbPlay.addActionListener(new ActionListener() {
 				@Override
 				public void actionPerformed(ActionEvent arg0) {
-						paused = false;
-						
-						sbPlay.setEnabled(false);
-						sbPause.setEnabled(true);
-						sbStop.setEnabled(true);
+					play();
 				}
 			});
 			
 			sbPause.addActionListener(new ActionListener() {
 				@Override
-				public void actionPerformed(ActionEvent arg0) {
+				public void actionPerformed(ActionEvent ae) {
 					pause();
 				}
 			});
 
 			sbStop.addActionListener(new ActionListener() {
 				@Override
-				public void actionPerformed(ActionEvent arg0) {					
+				public void actionPerformed(ActionEvent ae) {					
 					stop();
 				}
 			});
 	
 			sbReplay.addActionListener(new ActionListener() {
 				@Override
-				public void actionPerformed(ActionEvent arg0) {
+				public void actionPerformed(ActionEvent ae) {
 					
 					clickHistoryStack.clear();
 					for (int i = 0; i < clickHistory.size(); i++) {
@@ -1263,12 +1296,22 @@ public class ForestFire extends JPanel implements ActionListener {
 			add(groupConfigure);
 		}
 		
+		public void play() {
+			paused = false;
+			
+			sbPlay.setEnabled(false);
+			sbPause.setEnabled(true);
+			sbStop.setEnabled(true);
+		}
+		
 		public void pause() {
 			paused = true;
 
 			sbPlay.setEnabled(true);
 			sbPause.setEnabled(false);
 			sbStop.setEnabled(true);
+			
+			ForestFire.this.repaint();
 		}
 		
 		public void stop() {
@@ -1452,7 +1495,9 @@ public class ForestFire extends JPanel implements ActionListener {
 					if (replayMode) {
 						mousePressedLeft = false;
 						rebuildStates();
-						paused = false;
+						if (paused) {
+							ForestFire.this.repaint();
+						}
 					}
 				}
 			});
@@ -1532,7 +1577,7 @@ public class ForestFire extends JPanel implements ActionListener {
 			
 			while (replayTick <= tick) {	
 				
-				for (int i = 0; i < numTrees; i++) {
+				for (int i = 0; i < sortedTrees.size(); i++) {
 					// Fire animation (not drawn)
 					if (sortedTrees.get(i).getState().equals(Tree.RED)) {
 						if (sortedTrees.get(i).getHealth() < ANIMATION_LENGTH - 1) {
@@ -1601,5 +1646,9 @@ public class ForestFire extends JPanel implements ActionListener {
 	
 	public ReplaySlider getReplaySlider() {
 		return replaySlider;
+	}
+	
+	public void setDialogOpen(boolean dialogOpen) {
+		ForestFire.dialogOpen = dialogOpen;
 	}
 }

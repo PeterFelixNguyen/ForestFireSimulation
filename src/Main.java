@@ -17,6 +17,7 @@ import java.awt.event.ItemEvent;
 import java.awt.event.ItemListener;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
+import java.awt.event.MouseListener;
 import java.awt.event.MouseMotionListener;
 
 import javax.swing.BorderFactory;
@@ -113,7 +114,6 @@ public class Main {
 		JMenu jmView = new JMenu("View");
 		JCheckBoxMenuItem jmiPositions = new JCheckBoxMenuItem("Tree Positions");
 		jmiPositions.addItemListener(new ItemListener() {
-
 			@Override
 			public void itemStateChanged(ItemEvent ie) {
 				if (ie.getStateChange() == ItemEvent.SELECTED) {
@@ -132,7 +132,6 @@ public class Main {
 		
 		JCheckBoxMenuItem jmiHealth = new JCheckBoxMenuItem("Tree Health");
 		jmiHealth.addItemListener(new ItemListener() {
-
 			@Override
 			public void itemStateChanged(ItemEvent ie) {
 				if (ie.getStateChange() == ItemEvent.SELECTED) {
@@ -146,8 +145,28 @@ public class Main {
 			}
 		});
 		
+		JMenu jmPlayback = new JMenu("Playback");
+		
+		JCheckBoxMenuItem jcbmiClickUnpause = new JCheckBoxMenuItem("Click Unpauses");
+		jcbmiClickUnpause.setSelected(true);
+		jcbmiClickUnpause.addItemListener(new ItemListener() {
+			@Override
+			public void itemStateChanged(ItemEvent ie) {
+				if (ie.getStateChange() == ItemEvent.SELECTED) {
+					forestFire.setClickUnpauses(true);
+					// Should re-work code as a method with argument
+				} else {
+					forestFire.setClickUnpauses(false);
+				}
+	
+				forestFire.repaint();
+			}
+		});
+		
 		jmView.add(jmiPositions);
 		jmView.add(jmiHealth);
+		jmPlayback.add(jcbmiClickUnpause);
+
 		JMenu jmFire = new JMenu("Fire");
 
 		JPanel jpViewFire = new JPanel();
@@ -320,6 +339,35 @@ public class Main {
 			jftf.removeMouseMotionListener(mouseMotionListeners[i]);
 		}
 		
+		MouseListener[] mouseListeners = jftf.getMouseListeners();
+		for (int i = 0; i < mouseListeners.length; i ++) {
+			jftf.removeMouseListener(mouseListeners[i]);
+		}
+		
+		// Add a special listener to this component
+		jftf.addMouseListener(new MouseAdapter() {
+			int jftfIndex = 6; // should be a variable instead of literal
+
+			@Override
+			public void mousePressed(MouseEvent me) {
+				if (me.getButton() == MouseEvent.BUTTON1) {
+					if (jftfIndex == values.length - 1) {
+						jftfIndex = 0;
+					} else {
+						jftfIndex++;
+					}
+				} else if (me.getButton() == MouseEvent.BUTTON3) {
+					if (jftfIndex == 0) {
+						jftfIndex = values.length - 1;
+					} else {
+						jftfIndex--;
+					}
+				}
+				jsPopulation.setValue(values[jftfIndex]);
+				// should set the variable's value
+			}
+		});
+		
 		innerPanelNewMapRow1.add(new JLabel("Tree Population"));
 //		innerPanelNewMapRow2.add(jcbPopulation);
 		innerPanelNewMapRow2.add(jsPopulation);
@@ -349,6 +397,8 @@ public class Main {
 
 			@Override
 			public void mouseReleased(MouseEvent me) {
+				forestFire.setDialogOpen(false);
+				forestFire.repaint();
 				jdNewMap.setVisible(false);					
 			}
 			
@@ -395,6 +445,8 @@ public class Main {
 
 			@Override
 			public void mouseReleased(MouseEvent me) {
+				forestFire.setDialogOpen(false);
+				forestFire.repaint();
 				jdAbout.setVisible(false);					
 			}
 			
@@ -451,18 +503,21 @@ public class Main {
 					break;
 			}
 			forestFire.setPopulationFactorAndSize(selectedIndex);
-			
+			forestFire.setDialogOpen(false);
+
 			jdNewMap.setVisible(false);
 		});
 		
 		
 		sbCancel.addActionListener(e -> {
+			forestFire.setDialogOpen(false);
 			jdNewMap.setVisible(false);
 		});
 		
 		jmiNewMap.addActionListener(e -> {
+			forestFire.setDialogOpen(true);
 			forestFire.getMapButtons().pause();
-			jdNewMap.setVisible(true);
+			jdNewMap.setVisible(true); // should set on timer
 		});
 		
 		jmiEditMap.addActionListener(e -> {
@@ -476,7 +531,9 @@ public class Main {
 		});
 		
 		jmiAbout.addActionListener(e -> {
-			jdAbout.setVisible(true);
+			forestFire.setDialogOpen(true);
+			forestFire.getMapButtons().pause();
+			jdAbout.setVisible(true); // should set on timer
 		});
 		
 		
@@ -495,6 +552,7 @@ public class Main {
 		jmFile.add(jmiExit);
 		jmOptions.add(jmView);
 		jmOptions.add(jmFire);
+		jmOptions.add(jmPlayback);
 		jmHelp.add(jmiAbout);
 		jmHelp.add(jmiTutorial);
 		
