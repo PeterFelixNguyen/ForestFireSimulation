@@ -38,6 +38,11 @@ Copyright Peter "Felix" Nguyen and Emmanuel Medina Lopez
 15. Status of map: remaining trees, number of trees on fire, number of trees on map, dead trees.
 15. [In-progress] allow unlimited replay of the same replay
 16. Save map replays (requires original map).
+17. Progress bar should be added for tasks that take a while such as rendering a large map or a map with a large population of trees.
+18. Map scrolling for maps that are larger than the device screen.
+
+# Third Party Libraries
+1. http://www.jroller.com/DhilshukReddy/entry/swingjd_project
 
 # Links that helped me
 
@@ -45,6 +50,7 @@ Copyright Peter "Felix" Nguyen and Emmanuel Medina Lopez
 1. http://content.gpwiki.org/index.php/Java:Tutorials:VolatileImage
 2. https://docs.oracle.com/javase/8/docs/api/java/awt/image/VolatileImage.html
 3. https://docs.oracle.com/javase/tutorial/2d/advanced/compositing.html
+4. http://stackoverflow.com/questions/2684123/java-volatileimage-slower-than-bufferedimage
 
 ## Miscellaneous 
 1. http://stackoverflow.com/questions/3680221/how-can-i-get-the-monitor-size-in-java
@@ -54,8 +60,8 @@ Copyright Peter "Felix" Nguyen and Emmanuel Medina Lopez
 1. http://stackoverflow.com/questions/2411197/setting-panel-at-center-of-screen-by-using-layout
 
 ## Look and Feel
-http://stackoverflow.com/questions/15260484/java-swing-how-to-change-the-font-size-on-a-jpanels-titledborder
-http://stackoverflow.com/questions/4631021/how-to-set-transparent-background-of-jdialog
+1. http://stackoverflow.com/questions/15260484/java-swing-how-to-change-the-font-size-on-a-jpanels-titledborder
+2. http://stackoverflow.com/questions/4631021/how-to-set-transparent-background-of-jdialog
 
 ## Graphics and Drawing
-http://www.coderanch.com/t/336616/GUI/java/Center-Align-text-drawString
+1. http://www.coderanch.com/t/336616/GUI/java/Center-Align-text-drawString
