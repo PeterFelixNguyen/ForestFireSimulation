@@ -169,9 +169,9 @@ public class ForestFire extends JPanel implements ActionListener {
 	private StandardButton sbNormal = new StandardButton("1.0x", ButtonType.BUTTON_ROUNDED_RECTANGLUR, Theme.STANDARD_BLUEGREEN_THEME, Theme.STANDARD_PALEBROWN_THEME, Theme.STANDARD_BLACK_THEME);
 	private StandardButton sbFast = new StandardButton("2.0x", ButtonType.BUTTON_ROUNDED_RECTANGLUR, Theme.STANDARD_BLUEGREEN_THEME, Theme.STANDARD_PALEBROWN_THEME, Theme.STANDARD_BLACK_THEME);
 	private StandardButton sbFaster = new StandardButton("4.0x", ButtonType.BUTTON_ROUNDED_RECTANGLUR, Theme.STANDARD_BLUEGREEN_THEME, Theme.STANDARD_PALEBROWN_THEME, Theme.STANDARD_BLACK_THEME);
-	private StandardButton sbNew = new StandardButton("NEW", ButtonType.BUTTON_ROUNDED_RECTANGLUR, Theme.STANDARD_BLUEGREEN_THEME, Theme.STANDARD_PALEBROWN_THEME, Theme.STANDARD_BLACK_THEME);
 		
 	// Playback states
+	private static boolean pausePressed = false;
 	private static boolean paused = false;
 	private static boolean stopped = true;
 	private static boolean dialogOpen = false;
@@ -620,7 +620,6 @@ public class ForestFire extends JPanel implements ActionListener {
 					sbPause.setEnabled(true);
 					sbStop.setEnabled(true);
 					sbReplay.setEnabled(true);
-					sbNew.setEnabled(false);
 					
 					clickHistory.clear();
 				}
@@ -1139,6 +1138,7 @@ public class ForestFire extends JPanel implements ActionListener {
 				@Override
 				public void actionPerformed(ActionEvent arg0) {
 					play();
+					pausePressed = false; 
 				}
 			});
 			
@@ -1146,6 +1146,7 @@ public class ForestFire extends JPanel implements ActionListener {
 				@Override
 				public void actionPerformed(ActionEvent ae) {
 					pause();
+					pausePressed = true;
 				}
 			});
 
@@ -1191,7 +1192,6 @@ public class ForestFire extends JPanel implements ActionListener {
 					sbPause.setEnabled(true);
 					sbStop.setEnabled(true);
 					sbReplay.setEnabled(false);
-					sbNew.setEnabled(false);
 				}
 			});
 			
@@ -1242,26 +1242,6 @@ public class ForestFire extends JPanel implements ActionListener {
 					sbFaster.setEnabled(false);
 				}
 			});
-			
-			// This is a temporary button used test making random maps
-			sbNew.addActionListener(new ActionListener() {
-
-				@Override
-				public void actionPerformed(ActionEvent arg0) {
-					// I don't think I need to clear the burning trees
-					if (!timerSimulation.isRunning() && !timerReplay.isRunning()) {
-						
-						// Create array of trees and sort them
-						sortedTrees = new ArrayList<Tree>();
-						makeTrees(2);
-						
-						// Add neighboring trees to each tree
-						TreeGrouper.buildTreeSets(sortedTrees);	
-						
-						ForestFire.this.repaint();
-					}
-				}
-			});
 			// Event handling END
 			
 			// Playback standard button group
@@ -1282,18 +1262,11 @@ public class ForestFire extends JPanel implements ActionListener {
 			groupSpeed.add(sbFast);
 			groupSpeed.add(sbFaster);
 			
-			// Configure button group
-			JPanel groupConfigure = new JPanel(new FlowLayout(FlowLayout.LEFT));
-			groupConfigure.setOpaque(false);
-			groupConfigure.setBorder(BorderFactory.createTitledBorder(BorderFactory.createLineBorder(Color.BLACK, 2), "Map"));
-			groupConfigure.add(sbNew);
-			
 			// Button bar for user controls and settings
 			setOpaque(false);
 
 			add(groupPlayback);
 			add(groupSpeed);
-			add(groupConfigure);
 		}
 		
 		public void play() {
@@ -1339,7 +1312,6 @@ public class ForestFire extends JPanel implements ActionListener {
 			sbPause.setEnabled(false);
 			sbStop.setEnabled(false);
 			sbReplay.setEnabled(true);
-			sbNew.setEnabled(true);
 			
 			ForestFire.this.repaint();
 			getReplaySlider().repaint();
@@ -1495,6 +1467,9 @@ public class ForestFire extends JPanel implements ActionListener {
 					if (replayMode) {
 						mousePressedLeft = false;
 						rebuildStates();
+						if (!pausePressed) {
+							paused = false;
+						}
 						if (paused) {
 							ForestFire.this.repaint();
 						}
