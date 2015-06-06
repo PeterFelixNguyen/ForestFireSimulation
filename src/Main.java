@@ -280,23 +280,6 @@ public class Main {
 		CompoundBorder compoundBorder = new CompoundBorder(BorderFactory.createLineBorder(new Color(55, 50, 22), 4), BorderFactory.createTitledBorder(BorderFactory.createLineBorder(Color.BLACK, 2), "Configure New Map", TitledBorder.CENTER, TitledBorder.CENTER, font));
 		innerPanelNewMap.setBorder(compoundBorder);
 		
-		JComboBox<String> jcbPopulation = new JComboBox<String>();
-		jcbPopulation.setMaximumRowCount(15);
-		jcbPopulation.addItem("ULTRA LARGE");
-		jcbPopulation.addItem("XXXX LARGE");
-		jcbPopulation.addItem("XXX LARGE");
-		jcbPopulation.addItem("XX LARGE");
-		jcbPopulation.addItem("X LARGE");
-		jcbPopulation.addItem("LARGE");
-		jcbPopulation.addItem("MEDIUM");
-		jcbPopulation.addItem("SMALL");
-		jcbPopulation.addItem("X SMALL");
-		jcbPopulation.addItem("XX SMALL");
-		jcbPopulation.addItem("XXX SMALL");
-		jcbPopulation.addItem("XXXX SMALL");
-		jcbPopulation.addItem("ULTRA SMALL");
-		jcbPopulation.setSelectedIndex(6);
-		
 		JComboBox<String> jcbMapSize = new JComboBox<String>();
 		jcbMapSize.setMaximumRowCount(15);
 		jcbMapSize.addItem("Automatic");
@@ -369,7 +352,6 @@ public class Main {
 		});
 		
 		innerPanelNewMapRow1.add(new JLabel("Tree Population"));
-//		innerPanelNewMapRow2.add(jcbPopulation);
 		innerPanelNewMapRow2.add(jsPopulation);
 		innerPanelNewMapRow3.add(new JLabel("Map Size"));
 		innerPanelNewMapRow4.add(jcbMapSize);
@@ -453,10 +435,6 @@ public class Main {
 		});
 		
 		sbApply.addActionListener(e -> {
-//			int selectedPopulation = jcbPopulation.getSelectedIndex();
-//			forestFire.setPopulationFactorAndSize(selectedPopulation);
-//			int selectedMapSize = jcbPopulation.getSelectedIndex();
-			
 			// Temporary solution for JSpinner
 			System.out.println("Value: " + (String)jsPopulation.getValue());
 			
@@ -505,6 +483,8 @@ public class Main {
 			forestFire.setPopulationFactorAndSize(selectedIndex);
 			forestFire.setDialogOpen(false);
 
+			forestFire.setEditMode(true);
+			
 			jdNewMap.setVisible(false);
 		});
 		
