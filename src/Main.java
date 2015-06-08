@@ -484,6 +484,7 @@ public class Main {
 			forestFire.setDialogOpen(false);
 
 			forestFire.setEditMode(true);
+			forestFire.fillTrees();
 			
 			jdNewMap.setVisible(false);
 		});
