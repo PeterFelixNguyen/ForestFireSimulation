@@ -95,7 +95,7 @@ public class ForestFire extends JPanel implements ActionListener {
 	public static int heightOfOtherComponents = 112;
 	
 	// Tree objects
-	private static int numTrees;
+	private static int maxTrees;
 	private static ArrayList<Tree> sortedTrees;
 	
 	// Tree and fire characteristics
@@ -255,14 +255,14 @@ public class ForestFire extends JPanel implements ActionListener {
 			height = height + 300;
 		}
 		
-		// numTrees = x-percentage of total pixels
+		// maxTrees = x-percentage of total pixels
 		selectedPopulation = POPULATION_MEDIUM;
-		setNumTrees(selectedPopulation);
-		System.out.println("numTrees = " + numTrees);
+		setMaxTrees(selectedPopulation);
+		System.out.println("maxTrees = " + maxTrees);
 		
 		// Create array of trees and sort them
 		sortedTrees = new ArrayList<Tree>();
-		makeTrees(2);
+		makeTrees(2, maxTrees);
 
 		// Add neighboring trees to each tree
 		TreeGrouper.buildTreeSets(sortedTrees);
@@ -369,7 +369,7 @@ public class ForestFire extends JPanel implements ActionListener {
 						}
 						
 						if (!replayMode) {
-							boolean treeClicked = clickFunction(me.getX(), me.getY());
+							boolean treeClicked = clickIgniteTrees(me.getX(), me.getY());
 									
 							if (treeClicked) {
 								stopped = false;
@@ -382,11 +382,14 @@ public class ForestFire extends JPanel implements ActionListener {
 						System.out.println("MAKE TREES");
 					} else if (paintBrush.equals(BRUSH_LAND)) {
 						System.out.println("MAKE LAND");
+						clickMakeLand(me.getX(), me.getY());
+						System.out.println("Size after click: " + sortedTrees.size());
 					} else if (paintBrush.equals(BRUSH_SEA)) {
 						System.out.println("MAKE SEA");
 					} else {
 						System.out.println("NO ACTION");
 					}
+					repaint();
 				}
 				
 				if (paused && clickUnpauses) {
@@ -438,7 +441,7 @@ public class ForestFire extends JPanel implements ActionListener {
 				
 				if (!editMode) {
 					if (mousePressedLeft && !replayMode) {
-						boolean treeClicked = clickFunction(me.getX(), me.getY());
+						boolean treeClicked = clickIgniteTrees(me.getX(), me.getY());
 								
 						if (treeClicked) {
 							stopped = false;
@@ -450,6 +453,8 @@ public class ForestFire extends JPanel implements ActionListener {
 						System.out.println("MAKE TREES");
 					} else if (paintBrush.equals(BRUSH_LAND)) {
 						System.out.println("MAKE LAND");
+						clickMakeLand(me.getX(), me.getY());
+						System.out.println("Size after click: " + sortedTrees.size());
 					} else if (paintBrush.equals(BRUSH_SEA)) {
 						System.out.println("MAKE SEA");
 					} else {
@@ -500,7 +505,7 @@ public class ForestFire extends JPanel implements ActionListener {
 					while (clickHistoryStack.size() > 0 && tick == clickHistoryStack.get(0).getTick()) {
 						int xClicked = clickHistoryStack.get(0).getX();
 						int yClicked = clickHistoryStack.get(0).getY();
-						clickFunction(xClicked, yClicked);
+						clickIgniteTrees(xClicked, yClicked);
 						clickHistoryStack.remove(0);
 //						System.out.print("Pop (Pre-seek)");
 //						System.out.print(" -> size: " + clickHistoryStack.size());
@@ -564,7 +569,7 @@ public class ForestFire extends JPanel implements ActionListener {
 		replaySlider = new ReplaySlider();
 	}
 
-	public boolean clickFunction(int xClick, int yClick) {
+	public boolean clickIgniteTrees(int xClick, int yClick) {
 		System.out.println("Clicked: (" + xClick + "," + yClick + ")");
 //		System.out.println("Tick at Click: " + tick);
 		int x1 = xClick - clickRadius;
@@ -634,6 +639,58 @@ public class ForestFire extends JPanel implements ActionListener {
 		return fireStarted;
 	}
 
+	public void clickMakeLand(int xClick, int yClick) {
+		System.out.println("Clicked: (" + xClick + "," + yClick + ")");
+//		System.out.println("Tick at Click: " + tick);
+		int x1 = xClick - clickRadius;
+		int x2 = xClick + clickRadius;
+		int y1 = yClick - clickRadius;
+		int y2 = yClick + clickRadius;
+		
+		if (x1 < 0) {
+			x1 = 0;
+		}
+		if (x2 > ForestFire.width) {
+			x2 = ForestFire.width;
+		}
+		if (y1 < 0) {
+			y1 = 0;
+		}
+		if (y2 > ForestFire.height) {
+			y2 = ForestFire.height;
+		}
+
+		tempTreesA.clear();
+		int y = TreeGrouper.yBinarySearch(sortedTrees, y1 - (TREE_DIAMETER / 2));
+		int yEnd = TreeGrouper.yBinarySearch(sortedTrees, y2 - (TREE_DIAMETER / 2));
+
+		for (; y <= yEnd; y++) {
+			tempTreesA.add(sortedTrees.get(y));
+		}
+		Collections.sort(tempTreesA, new TreeXComparator());
+
+		tempTreesB.clear();
+		int x = TreeGrouper.xBinarySearch(tempTreesA, x1 - (TREE_DIAMETER / 2));
+		int xEnd = TreeGrouper.xBinarySearch(tempTreesA, x2 - (TREE_DIAMETER / 2));
+
+		for (; x <= xEnd; x++) {
+			tempTreesB.add(tempTreesA.get(x));
+		}
+				
+		for (int j = 0; j < tempTreesB.size(); j++) {
+			int originX = xClick - (TREE_DIAMETER / 2);
+			int originY = yClick - (TREE_DIAMETER / 2);
+			int nearbyX = tempTreesB.get(j).getX();
+			int nearbyY = tempTreesB.get(j).getY();
+
+			int value = (nearbyX - originX) * (nearbyX - originX) + (nearbyY - originY) * (nearbyY - originY);
+			
+			if (value <= clickRadiusSqr) {
+				sortedTrees.remove(tempTreesB.get(j));
+			}
+		}
+	}
+	
 	private VolatileImage createVolatileImage(int width, int height, int transparency) {
 		GraphicsEnvironment ge = GraphicsEnvironment.getLocalGraphicsEnvironment();
 		GraphicsConfiguration gc = ge.getDefaultScreenDevice().getDefaultConfiguration();
@@ -957,7 +1014,7 @@ public class ForestFire extends JPanel implements ActionListener {
 		}
 	}
 
-	private static void makeTrees(int sortMethod) {
+	private static void makeTrees(int sortMethod, int numTrees) {
 		// Generate trees
 		for (int i = 0; i < numTrees; i++) {
 			int x = (int) (10 + Math.random() * (width - TREE_DIAMETER - 15));
@@ -1108,11 +1165,26 @@ public class ForestFire extends JPanel implements ActionListener {
 			System.out.println("No Action");
 		}
 		
-		setNumTrees(ForestFire.selectedPopulation);
+		setMaxTrees(ForestFire.selectedPopulation);
 	}
 	
-	public void setNumTrees(double populationFactor) {
-		numTrees = (int) (populationFactor * (width * height));
+	public void setMaxTrees(double populationFactor) {
+		maxTrees = (int) (populationFactor * (width * height));
+	}
+	
+	public void fillTrees() {
+		// I don't think I need to clear the burning trees
+		if (!timerSimulation.isRunning() && !timerReplay.isRunning()) {
+			
+			// Create array of trees and sort them
+			sortedTrees = new ArrayList<Tree>();
+			makeTrees(2, maxTrees);
+			
+			// Add neighboring trees to each tree
+			TreeGrouper.buildTreeSets(sortedTrees);	
+			
+			ForestFire.this.repaint();
+		}
 	}
 	
 	class MapButtons extends JPanel {
@@ -1396,20 +1468,20 @@ public class ForestFire extends JPanel implements ActionListener {
 				int selection = jcbFill.getSelectedIndex();
 				
 				if (selection == 0) {
+					fillTrees();
+				} else if (selection == 1) {
 					// I don't think I need to clear the burning trees
 					if (!timerSimulation.isRunning() && !timerReplay.isRunning()) {
 						
 						// Create array of trees and sort them
 						sortedTrees = new ArrayList<Tree>();
-						makeTrees(2);
+						makeTrees(2, 0);
 						
 						// Add neighboring trees to each tree
 						TreeGrouper.buildTreeSets(sortedTrees);	
 						
 						ForestFire.this.repaint();
 					}
-				} else if (selection == 1) {
-					
 				} else if (selection == 2) {
 
 				} else {
@@ -1418,6 +1490,7 @@ public class ForestFire extends JPanel implements ActionListener {
 			});
 			
 			sbFinish.addActionListener(e -> {
+				rebuildTreeSets();
 				setEditMode(false);
 			}); 
 			// Listeners FINISH
@@ -1564,7 +1637,7 @@ public class ForestFire extends JPanel implements ActionListener {
 				while (clickHistoryStack.size() > 0 && replayTick == clickHistoryStack.get(0).getTick()) {
 					int xClicked = clickHistoryStack.get(0).getX();
 					int yClicked = clickHistoryStack.get(0).getY();
-					clickFunction(xClicked, yClicked);
+					clickIgniteTrees(xClicked, yClicked);
 					clickHistoryStack.remove(0);
 //					System.out.print("Pop (Post-seek)");
 //					System.out.print(" -> size: " + clickHistoryStack.size());
