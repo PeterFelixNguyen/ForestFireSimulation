@@ -19,6 +19,8 @@ import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.awt.event.MouseListener;
 import java.awt.event.MouseMotionListener;
+import java.awt.event.WindowAdapter;
+import java.awt.event.WindowEvent;
 
 import javax.swing.BorderFactory;
 import javax.swing.Box;
@@ -26,6 +28,7 @@ import javax.swing.BoxLayout;
 import javax.swing.JCheckBoxMenuItem;
 import javax.swing.JComboBox;
 import javax.swing.JDialog;
+import javax.swing.JFileChooser;
 import javax.swing.JFormattedTextField;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
@@ -42,6 +45,8 @@ import javax.swing.border.CompoundBorder;
 import javax.swing.border.TitledBorder;
 import javax.swing.event.ChangeEvent;
 import javax.swing.event.ChangeListener;
+import javax.swing.event.MenuEvent;
+import javax.swing.event.MenuListener;
 
 import com.jd.swing.custom.component.button.ButtonType;
 import com.jd.swing.custom.component.button.StandardButton;
@@ -50,6 +55,7 @@ import com.jd.swing.util.Theme;
 public class Main {
 	// GUI Frame
 	private static JFrame frame = new JFrame();
+	
 	// Need to refactor code (editMode)
 	//private static boolean editMode = false;
 	
@@ -66,14 +72,10 @@ public class Main {
 
 		ForestFire forestFire = new ForestFire();
 		
-		// Optional
-//		int widthPadding = 30;
-//		int heightPadding = 150;
-		
 		// Setup frame
 		frame.setTitle("Forest Fire by Peter \"Felix\" Nguyen");
-		frame.setSize(ForestFire.width, ForestFire.height);
-		frame.setMinimumSize(new Dimension(ForestFire.width, ForestFire.height));
+		frame.setSize(ForestFire.mapWidth, ForestFire.mapHeight);
+		frame.setMinimumSize(new Dimension(ForestFire.mapWidth, ForestFire.mapHeight));
 		frame.setLocationRelativeTo(null);
 		frame.setResizable(false);
 		frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
@@ -84,7 +86,7 @@ public class Main {
 		JPanel fullInterface = new JPanel();
 		fullInterface.setLayout(new BoxLayout(fullInterface, BoxLayout.Y_AXIS));
 		fullInterface.add(forestFire.getUpperPanel());
-		fullInterface.add(forestFire);
+		fullInterface.add(ForestFire.jspForestFire); // Should not be static
 		fullInterface.add(forestFire.getReplaySlider());
 		
 		// Add components to frame
@@ -112,8 +114,8 @@ public class Main {
 		
 		// Menu items (Options)
 		JMenu jmView = new JMenu("View");
-		JCheckBoxMenuItem jmiPositions = new JCheckBoxMenuItem("Tree Positions");
-		jmiPositions.addItemListener(new ItemListener() {
+		JCheckBoxMenuItem jcbmiPositions = new JCheckBoxMenuItem("Tree Positions");
+		jcbmiPositions.addItemListener(new ItemListener() {
 			@Override
 			public void itemStateChanged(ItemEvent ie) {
 				if (ie.getStateChange() == ItemEvent.SELECTED) {
@@ -130,8 +132,8 @@ public class Main {
 			}
 		});
 		
-		JCheckBoxMenuItem jmiHealth = new JCheckBoxMenuItem("Tree Health");
-		jmiHealth.addItemListener(new ItemListener() {
+		JCheckBoxMenuItem jcbmiHealth = new JCheckBoxMenuItem("Tree Health");
+		jcbmiHealth.addItemListener(new ItemListener() {
 			@Override
 			public void itemStateChanged(ItemEvent ie) {
 				if (ie.getStateChange() == ItemEvent.SELECTED) {
@@ -142,6 +144,20 @@ public class Main {
 				}
 
 				forestFire.repaint();
+			}
+		});
+		
+		
+		JCheckBoxMenuItem jcbmiGameStats = new JCheckBoxMenuItem("Game Stats");
+		jcbmiGameStats.setSelected(true);
+		jcbmiGameStats.addItemListener(new ItemListener() {
+			@Override
+			public void itemStateChanged(ItemEvent ie) {
+				if (ie.getStateChange() == ItemEvent.SELECTED) {
+					forestFire.setGameStatsVisible(true);
+				} else {
+					forestFire.setGameStatsVisible(false);
+				}
 			}
 		});
 		
@@ -163,11 +179,12 @@ public class Main {
 			}
 		});
 		
-		jmView.add(jmiPositions);
-		jmView.add(jmiHealth);
+		jmView.add(jcbmiPositions);
+		jmView.add(jcbmiHealth);
+		jmView.add(jcbmiGameStats);
 		jmPlayback.add(jcbmiClickUnpause);
 
-		JMenu jmFire = new JMenu("Fire");
+		JMenu jmTree = new JMenu("Tree");
 
 		JPanel jpViewFire = new JPanel();
 		jpViewFire.setLayout(new BoxLayout(jpViewFire, BoxLayout.Y_AXIS));
@@ -252,7 +269,7 @@ public class Main {
 		burnSliderContainer.add(burnSliderRow2);
 		jpViewFire.add(burnSliderContainer);
 
-		jmFire.add(jpViewFire);
+		jmTree.add(jpViewFire);
 		
 		// Menu items (Help)
 		JMenuItem jmiAbout = new JMenuItem("About");
@@ -268,7 +285,6 @@ public class Main {
 		jdNewMap.setBackground(new Color(0, 0, 0, 0));
 		// Transparency tweak FINISH
 		
-		jdNewMap.setUndecorated(true);
 		jdNewMap.setAlwaysOnTop(false);
 		jdNewMap.setModalityType(ModalityType.APPLICATION_MODAL);
 		jdNewMap.setModal(true);
@@ -277,17 +293,26 @@ public class Main {
 		innerPanelNewMap.setLayout(new BoxLayout(innerPanelNewMap, BoxLayout.Y_AXIS));
 		innerPanelNewMap.setBackground(LookAndFeel.COLOR_SOLID_PANELS);
 		Font font = new Font(innerPanelNewMap.getFont().getFontName(), Font.BOLD, 14);
-		CompoundBorder compoundBorder = new CompoundBorder(BorderFactory.createLineBorder(new Color(55, 50, 22), 4), BorderFactory.createTitledBorder(BorderFactory.createLineBorder(Color.BLACK, 2), "Configure New Map", TitledBorder.CENTER, TitledBorder.CENTER, font));
+		CompoundBorder compoundBorder = new CompoundBorder(BorderFactory.createLineBorder(LookAndFeel.COLOR_SOLID_PANELS_BORDER, 4), BorderFactory.createTitledBorder(BorderFactory.createLineBorder(Color.BLACK, 2), "Configure New Map", TitledBorder.CENTER, TitledBorder.CENTER, font));
 		innerPanelNewMap.setBorder(compoundBorder);
 		
 		JComboBox<String> jcbMapSize = new JComboBox<String>();
 		jcbMapSize.setMaximumRowCount(15);
-		jcbMapSize.addItem("Automatic");
+		jcbMapSize.addItem("Custom size");
+		jcbMapSize.addItem("Fit to screen");
 		jcbMapSize.addItem(ForestFire.RESOLUTION_WVGA);
 		jcbMapSize.addItem(ForestFire.RESOLUTION_WSVGA);
-		jcbMapSize.addItem(ForestFire.RESOLUTION_ASUS);
-		jcbMapSize.addItem(ForestFire.RESOLUTION_ALIEN);
-		jcbMapSize.setSelectedIndex(0);
+		jcbMapSize.addItem(ForestFire.RESOLUTION_720P);
+		jcbMapSize.addItem(ForestFire.RESOLUTION_SXGA);
+		jcbMapSize.addItem(ForestFire.RESOLUTION_HDPLUS);
+		jcbMapSize.addItem(ForestFire.RESOLUTION_UXGA);
+		jcbMapSize.addItem(ForestFire.RESOLUTION_FHD);
+		jcbMapSize.addItem(ForestFire.RESOLUTION_WQXGA);
+		jcbMapSize.addItem("3000x3000");
+		
+		((JLabel) jcbMapSize.getRenderer()).setHorizontalAlignment(JLabel.CENTER);
+
+		jcbMapSize.setSelectedIndex(1);
 
 		JPanel innerPanelNewMapRow1 = new JPanel(new FlowLayout(FlowLayout.CENTER));
 		innerPanelNewMapRow1.setOpaque(false);
@@ -310,7 +335,6 @@ public class Main {
 		jsPopulation.setValue(values[6]); // This should be a variable for the current value
 		jsPopulation.setEditor(new JSpinner.DefaultEditor(jsPopulation));
 		
-//		jsPopulation.getEditor().setMinimumSize(new JLabel("ULTRA LARGE").getSize());
 		Component mySpinnerEditor = jsPopulation.getEditor();
 		JFormattedTextField jftf = ((JSpinner.DefaultEditor) mySpinnerEditor).getTextField();
 		jftf.setColumns(8);
@@ -373,7 +397,7 @@ public class Main {
 		jpNewMap.add(innerPanelNewMap, new GridBagConstraints());
 
 		jdNewMap.setContentPane(jpNewMap);
-		jdNewMap.setSize(ForestFire.width, ForestFire.height);
+		jdNewMap.setSize(ForestFire.screenWidth, ForestFire.screenHeight);
 		
 		jpNewMap.addMouseListener(new MouseAdapter() {
 
@@ -394,7 +418,6 @@ public class Main {
 				// This overrides the mouse listener in the parent (jpNewMap)
 				// Without this, clicking the child component will trigger setVisible(false)
 			}
-			
 		});
 		
 		JDialog jdAbout = new JDialog();
@@ -406,13 +429,12 @@ public class Main {
 		jdAbout.setBackground(new Color(0, 0, 0, 0));
 		// Transparency tweak FINISH
 		
-		jdAbout.setUndecorated(true);
 		jdAbout.setAlwaysOnTop(false);
 		jdAbout.setModalityType(ModalityType.APPLICATION_MODAL);
 		jdAbout.setModal(true);
 		
 		AboutPanel aboutPanel = new AboutPanel();
-		aboutPanel.setBorder(BorderFactory.createLineBorder(new Color(55, 50, 22), 4));
+		aboutPanel.setBorder(BorderFactory.createLineBorder(LookAndFeel.COLOR_SOLID_PANELS_BORDER, 4));
 		aboutPanel.setBackground(LookAndFeel.COLOR_SOLID_PANELS);
 		
 		JPanel jpAbout = new JPanel(); 
@@ -421,7 +443,7 @@ public class Main {
 		jpAbout.add(aboutPanel, new GridBagConstraints());
 
 		jdAbout.setContentPane(jpAbout);
-		jdAbout.setSize(ForestFire.width, ForestFire.height);
+		jdAbout.setSize(ForestFire.screenWidth, ForestFire.screenHeight);
 
 		jpAbout.addMouseListener(new MouseAdapter() {
 
@@ -435,7 +457,46 @@ public class Main {
 		});
 		
 		sbApply.addActionListener(e -> {
-			// Temporary solution for JSpinner
+			// Temporay solution for MapSize
+			switch ((String)jcbMapSize.getSelectedItem()) {
+				case "Custom size":
+					// open resolution dialog here
+					break;
+				case "Fit to Screen":
+					forestFire.setMapSize(ForestFire.screenWidth, ForestFire.screenHeight);
+					break;
+				case ForestFire.RESOLUTION_WVGA:
+					forestFire.setMapSize(800, 480);
+					break;
+				case ForestFire.RESOLUTION_WSVGA:
+					forestFire.setMapSize(1024, 600);
+					break;
+				case ForestFire.RESOLUTION_720P:
+					forestFire.setMapSize(1280, 720);
+					break;
+				case ForestFire.RESOLUTION_SXGA:
+					forestFire.setMapSize(1280, 1024);
+					break;
+				case ForestFire.RESOLUTION_HDPLUS:
+					forestFire.setMapSize(1600, 900);
+					break;
+				case ForestFire.RESOLUTION_UXGA:
+					forestFire.setMapSize(1600, 1200);
+					break;
+				case ForestFire.RESOLUTION_FHD:
+					forestFire.setMapSize(1920, 1080);
+					break;
+				case ForestFire.RESOLUTION_WQXGA:
+					forestFire.setMapSize(2560, 1600);
+					break;
+				case "3000x3000":
+					forestFire.setMapSize(3000, 3000);
+					break;
+				default:
+					forestFire.setMapSize(ForestFire.screenWidth, ForestFire.screenHeight);
+			}
+			
+			// Temporary solution for Population
 			System.out.println("Value: " + (String)jsPopulation.getValue());
 			
 			int selectedIndex = 0;
@@ -516,7 +577,16 @@ public class Main {
 			forestFire.getMapButtons().pause();
 			jdAbout.setVisible(true); // should set on timer
 		});
-		
+
+		jmiSaveMap.addActionListener(e -> {
+			JFileChooser jfcSave = new JFileChooser();
+			jfcSave.showSaveDialog(null);
+		});
+
+		jmiLoadMap.addActionListener(e -> {
+			JFileChooser jfcLoad = new JFileChooser();
+			jfcLoad.showOpenDialog(null);
+		});
 		
 		jmiExit.addActionListener(e -> {
 			System.exit(0);
@@ -532,7 +602,7 @@ public class Main {
 		jmFile.addSeparator();
 		jmFile.add(jmiExit);
 		jmOptions.add(jmView);
-		jmOptions.add(jmFire);
+		jmOptions.add(jmTree);
 		jmOptions.add(jmPlayback);
 		jmHelp.add(jmiAbout);
 		jmHelp.add(jmiTutorial);
@@ -542,11 +612,83 @@ public class Main {
 		jmbForestFire.add(jmFile);
 		jmbForestFire.add(jmOptions);
 		jmbForestFire.add(jmHelp);
+
+		jmFile.addMenuListener(new MenuListener() {
+			
+			@Override
+			public void menuSelected(MenuEvent e) {
+				forestFire.hideGameStats(true);
+			}
+			
+			@Override
+			public void menuDeselected(MenuEvent e) {
+				forestFire.hideGameStats(false);
+			}
+			
+			@Override
+			public void menuCanceled(MenuEvent e) {
+			}
+		});
+		
+		jmOptions.addMenuListener(new MenuListener() {
+			
+			@Override
+			public void menuSelected(MenuEvent e) {
+				forestFire.hideGameStats(true);
+			}
+			
+			@Override
+			public void menuDeselected(MenuEvent e) {
+				forestFire.hideGameStats(false);
+			}
+			
+			@Override
+			public void menuCanceled(MenuEvent e) {
+			}
+		});
+		
+		jmHelp.addMenuListener(new MenuListener() {
+			
+			@Override
+			public void menuSelected(MenuEvent e) {
+				forestFire.hideGameStats(true);
+			}
+			
+			@Override
+			public void menuDeselected(MenuEvent e) {
+				forestFire.hideGameStats(false);
+			}
+			
+			@Override
+			public void menuCanceled(MenuEvent e) {
+			}
+		});
+		
+        frame.addWindowListener(new WindowAdapter() {
+            @Override
+            public void windowIconified(WindowEvent e) {
+        		forestFire.setGameStatsVisible(false);
+            }
+            @Override
+            public void windowDeiconified(WindowEvent e) {
+        		forestFire.setGameStatsVisible(true);
+            }
+            @Override
+            public void windowDeactivated(WindowEvent e) {
+        		forestFire.setGameStatsVisible(false);
+            }
+            @Override
+            public void windowActivated(WindowEvent e) {
+        		forestFire.setGameStatsVisible(true);
+            }
+        });
 		
 		// Set menu bar
 		frame.setJMenuBar(jmbForestFire);
 		
 		// Display GUI
 		frame.setVisible(true);
+		forestFire.setGameStatsVisible(true);
+		forestFire.hideGameStats(false);
 	}
 }

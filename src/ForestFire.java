@@ -18,7 +18,10 @@ import java.awt.Graphics2D;
 import java.awt.GraphicsConfiguration;
 import java.awt.GraphicsDevice;
 import java.awt.GraphicsEnvironment;
+import java.awt.GridBagConstraints;
+import java.awt.GridBagLayout;
 import java.awt.GridLayout;
+import java.awt.MouseInfo;
 import java.awt.Point;
 import java.awt.Polygon;
 import java.awt.RenderingHints;
@@ -42,11 +45,18 @@ import java.util.Set;
 
 import javax.imageio.ImageIO;
 import javax.swing.BorderFactory;
+import javax.swing.BoxLayout;
 import javax.swing.JComboBox;
 import javax.swing.JComponent;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
+import javax.swing.JScrollBar;
+import javax.swing.JScrollPane;
+import javax.swing.JViewport;
+import javax.swing.JWindow;
+import javax.swing.ScrollPaneConstants;
 import javax.swing.Timer;
+import javax.swing.border.LineBorder;
 
 import com.jd.swing.custom.component.button.ButtonType;
 import com.jd.swing.custom.component.button.StandardButton;
@@ -54,11 +64,20 @@ import com.jd.swing.util.Theme;
 
 @SuppressWarnings("serial")
 public class ForestFire extends JPanel implements ActionListener {
+	protected static JScrollPane jspForestFire;
+	private GameStats gameStats = new GameStats();
+	private JPanel mapPanel = new JPanel();
+
 	// Constants to specify map resolution
 	public final static String RESOLUTION_WVGA = "800x480";
 	public final static String RESOLUTION_WSVGA = "1024x600";
-	public final static String RESOLUTION_ASUS = "1800x900";
-	public final static String RESOLUTION_ALIEN = "1200x600";
+	public final static String RESOLUTION_720P = "1280x720";
+	public final static String RESOLUTION_SXGA = "1280x1024";
+	public final static String RESOLUTION_HDPLUS = "1600x900";
+	public final static String RESOLUTION_UXGA = "1600x1200";
+	public final static String RESOLUTION_FHD = "1920x1080";
+	public final static String RESOLUTION_WQXGA = "2560x1600";
+	
 	public final static String RESOLUTION_DEVICE = "DEVICE";
 	public final static int WIDTH_DEFAULT = 1200;
 	public final static int HEIGHT_DEFAULT = 600;
@@ -80,6 +99,7 @@ public class ForestFire extends JPanel implements ActionListener {
 	
 	// Map settings
 	private static double selectedPopulation;
+	@SuppressWarnings("unused")
 	private static String selectedMapSize;
 	
 	// Constants to specify percentage of trees for testing 
@@ -88,8 +108,10 @@ public class ForestFire extends JPanel implements ActionListener {
 
 	// Resolution options
 	private static String resolution = "";
-	public static int width = WIDTH_DEFAULT;
-	public static int height = HEIGHT_DEFAULT;
+	public static int screenWidth;
+	public static int screenHeight;
+	public static int mapWidth = WIDTH_DEFAULT;
+	public static int mapHeight = HEIGHT_DEFAULT;
 	
 	// Adjust height for MenuBar, ButtonBar, and ReplaySlider, 
 	public static int heightOfOtherComponents = 112;
@@ -152,6 +174,7 @@ public class ForestFire extends JPanel implements ActionListener {
 
 	// Thread timers
 	private static Timer timerSimulation;
+	private static Timer timerScroll;
 	private static Timer timerReplay;
 	private int firstAltSequenceCounter = 0;
 	private int secondAltSequenceCounter = 0;	
@@ -182,7 +205,7 @@ public class ForestFire extends JPanel implements ActionListener {
 	private static final float speedFast = 2.0f;
 	private static final float speedFaster = 4.0f;
 	public int simDelay = 50;
-	
+
 	// Replay track (considering using a Stack instead of an ArrayList)
 	private ArrayList<ClickAction> clickHistory = new ArrayList<ClickAction>();
 	private ArrayList<ClickAction> clickHistoryStack = new ArrayList<ClickAction>();
@@ -211,6 +234,7 @@ public class ForestFire extends JPanel implements ActionListener {
 	
 	// Boolean Mouse Flags
 	private boolean mousePressedLeft = false;
+	private boolean mousePressedRight = false;
 	
 	// Edit Mode
 	private boolean editMode = false;
@@ -218,47 +242,36 @@ public class ForestFire extends JPanel implements ActionListener {
 	private final String BRUSH_TREE = "Tree";
 	private final String BRUSH_LAND = "Land";
 	private final String BRUSH_SEA = "Sea";
+
+	// Map control
+	private int xClick;
+	private int yClick;
 	
 	public ForestFire() {
 		// Get device resolution
 		GraphicsDevice gd = GraphicsEnvironment.getLocalGraphicsEnvironment().getDefaultScreenDevice();
-		int screenWidth = gd.getDisplayMode().getWidth();
-		int screenHeight = gd.getDisplayMode().getHeight();
+		screenWidth = gd.getDisplayMode().getWidth();
+		screenHeight = gd.getDisplayMode().getHeight();
 		System.out.println("Device resolution = " + screenWidth + "x" + screenHeight);
 		
 		// Select resolution name
 		resolution = RESOLUTION_DEVICE;
 
-		// Configure map resolution
-		if (resolution == RESOLUTION_WVGA) {
-			width = 800;
-			height = 480;
-		} else if (resolution == RESOLUTION_WSVGA) {
-			width = 1024;
-			height = 600;
-		} else if (resolution == RESOLUTION_ASUS) {
-			width = 1800;
-			height = 900;
-		} else if (resolution == RESOLUTION_ALIEN) {
-			width = 1200;
-			height = 600;
-		} else if (resolution == RESOLUTION_DEVICE) {
-			width = screenWidth;
-			height = screenHeight;
-		}
+		jspForestFire = new JScrollPane(mapPanel, ScrollPaneConstants.VERTICAL_SCROLLBAR_NEVER, ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
+		jspForestFire.setBorder(null); // removes unwanted border
+		Dimension fixedSize2 = new Dimension(screenWidth, screenHeight - heightOfOtherComponents);
+		jspForestFire.setPreferredSize(fixedSize2);
+		jspForestFire.setSize(fixedSize2);
+		jspForestFire.setMinimumSize(fixedSize2);
+		jspForestFire.setMaximumSize(fixedSize2);
 		
-		// prevent width and height from being negative
-		if (width < 100) {
-			width = width + 100;
-		}
-		if (height < 300) {
-			height = height + 300;
-		}
+		// Set the size of container
+//		setMapSize(screenWidth, screenHeight); // default
+		setMapSize(3000, 3000); // test
 		
 		// maxTrees = x-percentage of total pixels
 		selectedPopulation = POPULATION_MEDIUM;
 		setMaxTrees(selectedPopulation);
-		System.out.println("maxTrees = " + maxTrees);
 		
 		// Create array of trees and sort them
 		sortedTrees = new ArrayList<Tree>();
@@ -360,9 +373,10 @@ public class ForestFire extends JPanel implements ActionListener {
 			public void mousePressed(MouseEvent me) {				
 				fireCursorClicked = true;
 				
-				if (!editMode) {
-					if (me.getButton() == MouseEvent.BUTTON1) {
-						mousePressedLeft = true;
+				if (me.getButton() == MouseEvent.BUTTON1) {
+					mousePressedLeft = true;
+
+					if (!editMode) {
 						
 						if (stopped || paused) {
 							repaint();
@@ -376,31 +390,35 @@ public class ForestFire extends JPanel implements ActionListener {
 								clickHistory.add(new ClickAction(me.getX(), me.getY(), tick));						
 							}
 						}
-					}
-				} else {
-					if (paintBrush.equals(BRUSH_TREE)) {
-						System.out.println("MAKE TREES");
-					} else if (paintBrush.equals(BRUSH_LAND)) {
-						System.out.println("MAKE LAND");
-						clickMakeLand(me.getX(), me.getY());
-						System.out.println("Size after click: " + sortedTrees.size());
-					} else if (paintBrush.equals(BRUSH_SEA)) {
-						System.out.println("MAKE SEA");
+						
+						if (paused && clickUnpauses) {
+							mapButtons.play();
+						}
 					} else {
-						System.out.println("NO ACTION");
+						if (paintBrush.equals(BRUSH_TREE)) {
+ 
+						} else if (paintBrush.equals(BRUSH_LAND)) {
+							clickMakeLand(me.getX(), me.getY());
+						} else if (paintBrush.equals(BRUSH_SEA)) {
+
+						} else {
+							System.out.println("NO ACTION");
+						}
+						repaint();
 					}
-					repaint();
-				}
-				
-				if (paused && clickUnpauses) {
-					mapButtons.play();
+				} else if (me.getButton() == MouseEvent.BUTTON3) {
+					mousePressedRight = true; // PROBABLY NOT NEEDED
+	                setCursor(new Cursor(Cursor.MOVE_CURSOR));
+
+					xClick = (int) me.getLocationOnScreen().getX();
+					yClick = (int) me.getLocationOnScreen().getY();
 				}
 			}
 			
-
 			@Override
 			public void mouseReleased(MouseEvent e) {
 				mousePressedLeft = false;
+				mousePressedRight = false;
 				fireCursorClicked = false;
 				
 				if (!editMode) {
@@ -408,6 +426,13 @@ public class ForestFire extends JPanel implements ActionListener {
 						repaint();
 					}
 				}
+				
+				// Draw invisible cursor
+				Toolkit toolkit = Toolkit.getDefaultToolkit();
+			    Point hotSpot = new Point(0,0);
+			    BufferedImage cursorImage = new BufferedImage(1, 1, BufferedImage.TRANSLUCENT); 
+			    Cursor invisibleCursor = toolkit.createCustomCursor(cursorImage, hotSpot, "InvisibleCursor");        
+			    setCursor(invisibleCursor);
 			}
 
 			@Override
@@ -439,28 +464,44 @@ public class ForestFire extends JPanel implements ActionListener {
 					repaint();
 				}
 				
-				if (!editMode) {
-					if (mousePressedLeft && !replayMode) {
+				if (mousePressedLeft) {
+					if (!editMode && !replayMode) {
 						boolean treeClicked = clickIgniteTrees(me.getX(), me.getY());
 								
 						if (treeClicked) {
 							stopped = false;
 							clickHistory.add(new ClickAction(me.getX(), me.getY(), tick));						
 						}
-					}
-				} else {
-					if (paintBrush.equals(BRUSH_TREE)) {
-						System.out.println("MAKE TREES");
-					} else if (paintBrush.equals(BRUSH_LAND)) {
-						System.out.println("MAKE LAND");
-						clickMakeLand(me.getX(), me.getY());
-						System.out.println("Size after click: " + sortedTrees.size());
-					} else if (paintBrush.equals(BRUSH_SEA)) {
-						System.out.println("MAKE SEA");
 					} else {
-						System.out.println("NO ACTION");
+						if (paintBrush.equals(BRUSH_TREE)) {
+
+						} else if (paintBrush.equals(BRUSH_LAND)) {
+							clickMakeLand(me.getX(), me.getY());
+						} else if (paintBrush.equals(BRUSH_SEA)) {
+
+						} else {
+
+						}
 					}
-				}
+				} else if (me.getModifiersEx() == MouseEvent.BUTTON3_DOWN_MASK) {
+	                double mx = me.getLocationOnScreen().getX();
+	                double my = me.getLocationOnScreen().getY();
+	                int xPixelShift = (int) (xClick - mx);
+	                int yPixelShift = (int) (yClick - my);
+	                
+	                xClick = (int) mx;
+	                yClick = (int) my;
+	                
+	                jspForestFire.getHorizontalScrollBar().setValue(
+	                		jspForestFire.getHorizontalScrollBar().getValue()
+	                        + xPixelShift);
+	                jspForestFire.getVerticalScrollBar().setValue(
+	                		jspForestFire.getVerticalScrollBar().getValue()
+	                        + yPixelShift);
+	                
+	                mousePressedRight = true;
+	                setCursor(new Cursor(Cursor.MOVE_CURSOR));
+	            }				
 			}
 
 			@Override
@@ -481,15 +522,87 @@ public class ForestFire extends JPanel implements ActionListener {
 			}
 		});
 
-		// Set the size of container
-		Dimension fixedSize = new Dimension(width, height - heightOfOtherComponents);
-		setPreferredSize(fixedSize);
-		setSize(fixedSize);
-		setMinimumSize(fixedSize);
-		setMaximumSize(fixedSize);
+		mapPanel.setBackground(LookAndFeel.COLOR_SOLID_BLACK);
+		mapPanel.add(ForestFire.this, new GridBagConstraints());
 		
 		// Timer for simulation
 		timerSimulation = new Timer(simDelay, this);
+		
+		timerScroll = new Timer(simDelay, new ActionListener() {
+			@Override
+			public void actionPerformed(ActionEvent arg0) {				
+				if (!mousePressedRight) {
+					JViewport viewport = jspForestFire.getViewport();
+
+					JScrollBar verticalScrollBar = jspForestFire.getVerticalScrollBar();
+					
+					int yMin = verticalScrollBar.getMinimum();
+					int yMax = (int) (viewport.getView().getHeight() - viewport.getExtentSize().getHeight());
+	
+					// The height of ViewPort subtracted by height of ChildView is the actual yMax
+					int oldValueY = jspForestFire.getVerticalScrollBar().getValue();
+					int newValueY;
+	
+					int yDirection;
+	
+					/* I had to come up with my own technique that works for diagonal edge scroll because
+					   getVerticalScrollBar.setValue() and getHorizontalScrollBar.setValue() 
+					   does not happen concurrently so the animation would be choppy. ~Peter "Felix" Nguyen */
+		
+					/* With the regular method, the map would scroll vertically and then horizontally 
+					   (not truly diagonal). My implementation ensures that if the mouse is at the 
+					   corner of the map, the JScrollPane would scroll diagonally. ~Peter "Felix" Nguyen */
+					
+					/* I call this Octo-directional scrolling */
+					
+					if (MouseInfo.getPointerInfo().getLocation().getY() < 0 + 2) {
+						yDirection = -40;
+						newValueY = Math.max(oldValueY + yDirection, yMin);
+					} else if (MouseInfo.getPointerInfo().getLocation().getY() > ForestFire.screenHeight - 2) {
+						yDirection = +40;
+						newValueY = Math.min(oldValueY + yDirection, yMax);
+					} else {
+						yDirection = 0;
+						newValueY = oldValueY + yDirection;
+					}
+	
+					JScrollBar horizontalScrollBar = jspForestFire.getHorizontalScrollBar();
+					
+					// The width of ViewPort subtracted by width of ChildView is the actual xMax
+					int xMin = horizontalScrollBar.getMinimum();
+					int xMax = (int) (viewport.getView().getWidth() - viewport.getExtentSize().getWidth());
+					
+					int oldValueX = jspForestFire.getHorizontalScrollBar().getValue();
+					int newValueX;
+					
+					int xDirection;
+	
+					if (MouseInfo.getPointerInfo().getLocation().getX() < 0 + 2) {
+						xDirection = -40;
+						newValueX = Math.max(oldValueX + xDirection, xMin);
+					} else if (MouseInfo.getPointerInfo().getLocation().getX() > ForestFire.screenWidth - 2) {
+						xDirection = +40;
+						newValueX = Math.min(oldValueX + xDirection, xMax);
+					} else {
+						xDirection = 0;
+						newValueX = oldValueX + xDirection;
+					}
+					
+					// Update mouse cursor location
+					mouseXPosition += xDirection;
+					mouseYPosition += yDirection;
+					if (!timerSimulation.isRunning() && !timerReplay.isRunning()) {
+						repaint();
+					}
+					
+					// Octo-directional scrolling!
+					jspForestFire.getViewport().setViewPosition(new Point(newValueX, newValueY));
+				}
+				
+			}
+		});
+		
+		timerScroll.start();
 		
 		// Timer for replay (should consider using ONE timer)
 		timerReplay = new Timer(simDelay, new ActionListener() {
@@ -562,15 +675,15 @@ public class ForestFire extends JPanel implements ActionListener {
 		// Continue subcomponents
 		upperPanel.add(mapButtons = new MapButtons());
 		upperPanel.setBackground(LookAndFeel.COLOR_SOLID_PANELS);
-		upperPanel.setSize(new Dimension(width, 70));
-		upperPanel.setMinimumSize(new Dimension(width, 70));
-		upperPanel.setMaximumSize(new Dimension(width, 70));		
+		upperPanel.setSize(new Dimension(mapWidth, 70));
+		upperPanel.setMinimumSize(new Dimension(mapWidth, 70));
+		upperPanel.setMaximumSize(new Dimension(mapWidth, 70));		
 		editButtons = new EditButtons();
 		replaySlider = new ReplaySlider();
 	}
 
 	public boolean clickIgniteTrees(int xClick, int yClick) {
-		System.out.println("Clicked: (" + xClick + "," + yClick + ")");
+//		System.out.println("Clicked: (" + xClick + "," + yClick + ")");
 //		System.out.println("Tick at Click: " + tick);
 		int x1 = xClick - clickRadius;
 		int x2 = xClick + clickRadius;
@@ -580,14 +693,14 @@ public class ForestFire extends JPanel implements ActionListener {
 		if (x1 < 0) {
 			x1 = 0;
 		}
-		if (x2 > ForestFire.width) {
-			x2 = ForestFire.width;
+		if (x2 > ForestFire.mapWidth) {
+			x2 = ForestFire.mapWidth;
 		}
 		if (y1 < 0) {
 			y1 = 0;
 		}
-		if (y2 > ForestFire.height) {
-			y2 = ForestFire.height;
+		if (y2 > ForestFire.mapHeight) {
+			y2 = ForestFire.mapHeight;
 		}
 
 		tempTreesA.clear();
@@ -640,53 +753,57 @@ public class ForestFire extends JPanel implements ActionListener {
 	}
 
 	public void clickMakeLand(int xClick, int yClick) {
-		System.out.println("Clicked: (" + xClick + "," + yClick + ")");
+//		System.out.println("Clicked: (" + xClick + "," + yClick + ")");
 //		System.out.println("Tick at Click: " + tick);
-		int x1 = xClick - clickRadius;
-		int x2 = xClick + clickRadius;
-		int y1 = yClick - clickRadius;
-		int y2 = yClick + clickRadius;
 		
-		if (x1 < 0) {
-			x1 = 0;
-		}
-		if (x2 > ForestFire.width) {
-			x2 = ForestFire.width;
-		}
-		if (y1 < 0) {
-			y1 = 0;
-		}
-		if (y2 > ForestFire.height) {
-			y2 = ForestFire.height;
-		}
-
-		tempTreesA.clear();
-		int y = TreeGrouper.yBinarySearch(sortedTrees, y1 - (TREE_DIAMETER / 2));
-		int yEnd = TreeGrouper.yBinarySearch(sortedTrees, y2 - (TREE_DIAMETER / 2));
-
-		for (; y <= yEnd; y++) {
-			tempTreesA.add(sortedTrees.get(y));
-		}
-		Collections.sort(tempTreesA, new TreeXComparator());
-
-		tempTreesB.clear();
-		int x = TreeGrouper.xBinarySearch(tempTreesA, x1 - (TREE_DIAMETER / 2));
-		int xEnd = TreeGrouper.xBinarySearch(tempTreesA, x2 - (TREE_DIAMETER / 2));
-
-		for (; x <= xEnd; x++) {
-			tempTreesB.add(tempTreesA.get(x));
-		}
-				
-		for (int j = 0; j < tempTreesB.size(); j++) {
-			int originX = xClick - (TREE_DIAMETER / 2);
-			int originY = yClick - (TREE_DIAMETER / 2);
-			int nearbyX = tempTreesB.get(j).getX();
-			int nearbyY = tempTreesB.get(j).getY();
-
-			int value = (nearbyX - originX) * (nearbyX - originX) + (nearbyY - originY) * (nearbyY - originY);
+		if (sortedTrees.size() > 0) {
+			int x1 = xClick - clickRadius;
+			int x2 = xClick + clickRadius;
+			int y1 = yClick - clickRadius;
+			int y2 = yClick + clickRadius;
 			
-			if (value <= clickRadiusSqr) {
-				sortedTrees.remove(tempTreesB.get(j));
+			if (x1 < 0) {
+				x1 = 0;
+			}
+			if (x2 > ForestFire.mapWidth) {
+				x2 = ForestFire.mapWidth;
+			}
+			if (y1 < 0) {
+				y1 = 0;
+			}
+			if (y2 > ForestFire.mapHeight) {
+				y2 = ForestFire.mapHeight;
+			}
+	
+			tempTreesA.clear();
+			
+			int y = TreeGrouper.yBinarySearch(sortedTrees, y1 - (TREE_DIAMETER / 2));
+			int yEnd = TreeGrouper.yBinarySearch(sortedTrees, y2 - (TREE_DIAMETER / 2));
+	
+			for (; y <= yEnd; y++) {
+				tempTreesA.add(sortedTrees.get(y));
+			}
+			Collections.sort(tempTreesA, new TreeXComparator());
+	
+			tempTreesB.clear();
+			int x = TreeGrouper.xBinarySearch(tempTreesA, x1 - (TREE_DIAMETER / 2));
+			int xEnd = TreeGrouper.xBinarySearch(tempTreesA, x2 - (TREE_DIAMETER / 2));
+	
+			for (; x <= xEnd; x++) {
+				tempTreesB.add(tempTreesA.get(x));
+			}
+					
+			for (int j = 0; j < tempTreesB.size(); j++) {
+				int originX = xClick - (TREE_DIAMETER / 2);
+				int originY = yClick - (TREE_DIAMETER / 2);
+				int nearbyX = tempTreesB.get(j).getX();
+				int nearbyY = tempTreesB.get(j).getY();
+	
+				int value = (nearbyX - originX) * (nearbyX - originX) + (nearbyY - originY) * (nearbyY - originY);
+				
+				if (value <= clickRadiusSqr) {
+					sortedTrees.remove(tempTreesB.get(j));
+				}
 			}
 		}
 	}
@@ -733,7 +850,7 @@ public class ForestFire extends JPanel implements ActionListener {
 			g2d.setStroke(new BasicStroke(0.40f));
 
 			// Draw circular leaves
-			g2d.setColor(new Color(30, 150, 70));
+			g2d.setColor(LookAndFeel.COLOR_SOLID_TREE_LEAVES);
 			g2d.fillOval(0, 0, TREE_DIAMETER, TREE_DIAMETER);
 			g2d.setColor(Color.BLACK);
 			g2d.drawOval(0, 0, TREE_DIAMETER, TREE_DIAMETER);
@@ -809,7 +926,7 @@ public class ForestFire extends JPanel implements ActionListener {
 			int n = 3;
 			
 			// Render polygon
-			g2d.setColor(new Color(30, 150, 70));
+			g2d.setColor(LookAndFeel.COLOR_SOLID_TREE_LEAVES);
 			Polygon p = new Polygon(triX, triY, n);
 			g2d.fillPolygon(p);
 			g2d.setColor(Color.BLACK);
@@ -926,12 +1043,14 @@ public class ForestFire extends JPanel implements ActionListener {
 	@Override
 	public void paintComponent(Graphics g) {
 		super.paintComponent(g);
-				
+
+		gameStats.updateGameStats();
+
 		Graphics2D g2d = (Graphics2D) g;
 
 		// Draw land
 		g.setColor(new Color(90, 170, 90));
-		g.fillRect(0, 0, width, height - heightOfOtherComponents);
+		g.fillRect(0, 0, mapWidth, mapHeight - heightOfOtherComponents);
 
 		// Go back to black
 		g.setColor(new Color(0,0,0));
@@ -991,18 +1110,18 @@ public class ForestFire extends JPanel implements ActionListener {
 			
 			int stringWidth = (int)
 		            g2d.getFontMetrics().getStringBounds(string, g2d).getWidth();
-			int offsetX = width/2 - stringWidth/2;
+			int offsetX = mapWidth/2 - stringWidth/2;
 			
 			int stringHeight = (int)
 		            g2d.getFontMetrics().getStringBounds(string, g2d).getHeight();
-			int offsetY = height/2 - stringHeight/2;
+			int offsetY = mapHeight/2 - stringHeight/2;
 	        
 			g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
 			g.drawString(string, offsetX, offsetY);
 			
 			if (!dialogOpen) {
 				g.setColor(LookAndFeel.COLOR_TRANSLUCENT_BLACK);
-				g.fillRect(0, 0, width, height);
+				g.fillRect(0, 0, mapWidth, mapHeight);
 			}
 		}
 		
@@ -1014,11 +1133,11 @@ public class ForestFire extends JPanel implements ActionListener {
 		}
 	}
 
-	private static void makeTrees(int sortMethod, int numTrees) {
+	private void makeTrees(int sortMethod, int numTrees) {
 		// Generate trees
 		for (int i = 0; i < numTrees; i++) {
-			int x = (int) (10 + Math.random() * (width - TREE_DIAMETER - 15));
-			int y = (int) (10 + Math.random() * (height - 50 - heightOfOtherComponents));
+			int x = (int) (10 + Math.random() * (mapWidth - TREE_DIAMETER - 15));
+			int y = (int) (10 + Math.random() * (mapHeight - 50 - heightOfOtherComponents));
 
 			sortedTrees.add(new Tree(x, y));
 		}
@@ -1169,7 +1288,19 @@ public class ForestFire extends JPanel implements ActionListener {
 	}
 	
 	public void setMaxTrees(double populationFactor) {
-		maxTrees = (int) (populationFactor * (width * height));
+		maxTrees = (int) (populationFactor * (mapWidth * mapHeight));
+		
+		System.out.println("maxTrees (before rounding): " + maxTrees);
+		
+		// Round up maxTrees
+		if (maxTrees >= 100) {
+			maxTrees = (maxTrees + 50) / 100 * 100;
+		} else if (maxTrees >= 10) {
+			maxTrees = (maxTrees + 5) / 10 * 10;
+		} else {
+			maxTrees = 10;
+		}
+		System.out.println("maxTrees (after rounding): " + maxTrees);
 	}
 	
 	public void fillTrees() {
@@ -1185,6 +1316,32 @@ public class ForestFire extends JPanel implements ActionListener {
 			
 			ForestFire.this.repaint();
 		}
+	}
+	
+	public void setMapSize(int mapWidth, int mapHeight) {
+		// prevent width and height from being negative
+		if (mapWidth < 100) {
+			mapWidth = mapWidth + 100;
+		}
+		if (mapHeight < 300) {
+			mapHeight = mapHeight + 300;
+		}
+
+		ForestFire.mapWidth = mapWidth;
+		ForestFire.mapHeight = mapHeight;
+		
+		Dimension fixedSize3 = new Dimension(ForestFire.mapWidth + 40, ForestFire.mapHeight - heightOfOtherComponents + 40);
+		mapPanel.setLayout(new GridBagLayout());
+		mapPanel.setPreferredSize(fixedSize3);
+		mapPanel.setSize(fixedSize3);
+		mapPanel.setMinimumSize(fixedSize3);
+		mapPanel.setMaximumSize(fixedSize3);
+		
+		Dimension fixedSize = new Dimension(ForestFire.mapWidth, ForestFire.mapHeight - heightOfOtherComponents);
+		setPreferredSize(fixedSize);
+		setSize(fixedSize);
+		setMinimumSize(fixedSize);
+		setMaximumSize(fixedSize);
 	}
 	
 	class MapButtons extends JPanel {
@@ -1565,9 +1722,9 @@ public class ForestFire extends JPanel implements ActionListener {
 			});
 			
 			setBackground(new Color(215,199,151));
-			setSize(new Dimension(width, 20));
-			setMinimumSize(new Dimension(width, 20));
-			setMaximumSize(new Dimension(width, 20));		
+			setSize(new Dimension(mapWidth, 20));
+			setMinimumSize(new Dimension(mapWidth, 20));
+			setMaximumSize(new Dimension(mapWidth, 20));		
 		}
 		
 		public void seekReplay(MouseEvent me) {
@@ -1698,5 +1855,63 @@ public class ForestFire extends JPanel implements ActionListener {
 	
 	public void setDialogOpen(boolean dialogOpen) {
 		ForestFire.dialogOpen = dialogOpen;
+	}
+	
+	class GameStats extends JWindow {
+		// What is displayed depend on the mode
+		private JPanel panel  = new JPanel();
+		private JLabel jlPopulation = new JLabel();
+//		private JLabel jlPopulationType = new JLabel();
+		private JLabel jlMapSize = new JLabel();
+		
+		public GameStats() {
+			setLayout(new GridBagLayout());
+			panel.setOpaque(false);
+			panel.setLayout(new BoxLayout(panel, BoxLayout.Y_AXIS));
+			panel.add(jlPopulation);
+			panel.add(jlMapSize);
+			
+			setSize(panel.getPreferredSize());
+			setAlwaysOnTop(false);
+			setBackground(LookAndFeel.COLOR_SOLID_JWINDOW);
+			getRootPane().setBorder(new LineBorder(LookAndFeel.COLOR_SOLID_PANELS_BORDER, 3));
+			add(panel);
+			setLocation(10, 100);
+
+			addMouseListener(new MouseAdapter() {
+				boolean left = true;
+
+				@Override
+				public void mouseEntered(MouseEvent e) {
+					left = !left;
+					
+					if (left) {
+						setLocation(10, 100);
+					} else {
+						setLocation(ForestFire.screenWidth - gameStats.getWidth() - 10, 100);
+					}
+				}
+			});
+		}		
+		
+		public void updateGameStats() {
+			jlPopulation.setText("Population: " + sortedTrees.size() + "/" + maxTrees);
+			jlMapSize.setText("Map Size: " + mapWidth + "x" + mapHeight);
+
+			Dimension dimension = new Dimension(getPreferredSize().width + 25, getPreferredSize().height + 25);
+			setSize(dimension);
+		}
+	}
+	
+	public void hideGameStats(boolean hide) {
+		if (hide) {
+			gameStats.toBack();
+		} else {
+			gameStats.toFront();
+		}
+	}
+	
+	public void setGameStatsVisible(boolean visible) {
+		gameStats.setVisible(visible);
 	}
 }
