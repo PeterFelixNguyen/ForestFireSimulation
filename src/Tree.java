@@ -15,6 +15,8 @@ public class Tree {
 	public final int y;
 	private int initialHealth;
 	private int health;
+	public static final int TREE_LIFE = ForestFire.ANIMATION_LENGTH;
+	public static final int TREE_LIFE_INDEX = TREE_LIFE - 1;
 	
 	// States
 	private String state;
@@ -22,6 +24,10 @@ public class Tree {
 	public static final String RED = "burning";
 	public static final String BLACK = "burnt";
 
+	// Boolean States
+	private boolean wet = false;
+	private int wetDuration = 0;
+	
 	// Types
 	public final int type;
 	public static final int CIRCLE = 1;
@@ -119,13 +125,38 @@ public class Tree {
 	}
 	
 	public void tickHealth() {
-		health++;
-		if (health == 74) {
+		if (!wet) {
+			health++;
+		} else if (health > initialHealth) {
+			health--;
+		} else if (health == initialHealth) {
+			health = initialHealth;
+			setState(GREEN);
+		}
+		
+		if (health == TREE_LIFE_INDEX) {
 			setState(BLACK);
 		}
 	}
 	
 	public int getHealth() {
 		return health;
+	}
+	
+	public void tickState() {
+		if (wetDuration > 0) {
+			wetDuration--;
+		} else {
+			wet = false;
+		}
+	}
+	
+	public void setWet(boolean wet, int wetDuration) {
+		this.wetDuration = wetDuration;
+		this.wet = wet;
+	}
+	
+	public boolean isWet() {
+		return wet;
 	}
 }

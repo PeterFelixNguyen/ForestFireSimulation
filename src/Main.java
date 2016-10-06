@@ -13,6 +13,7 @@ import java.awt.FlowLayout;
 import java.awt.Font;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
+import java.awt.Toolkit;
 import java.awt.event.ItemEvent;
 import java.awt.event.ItemListener;
 import java.awt.event.MouseAdapter;
@@ -21,6 +22,8 @@ import java.awt.event.MouseListener;
 import java.awt.event.MouseMotionListener;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import javax.swing.BorderFactory;
 import javax.swing.Box;
@@ -39,14 +42,21 @@ import javax.swing.JPanel;
 import javax.swing.JSeparator;
 import javax.swing.JSlider;
 import javax.swing.JSpinner;
+import javax.swing.JTextField;
 import javax.swing.SpinnerListModel;
 import javax.swing.SwingConstants;
 import javax.swing.border.CompoundBorder;
 import javax.swing.border.TitledBorder;
 import javax.swing.event.ChangeEvent;
 import javax.swing.event.ChangeListener;
+import javax.swing.event.DocumentEvent;
+import javax.swing.event.DocumentListener;
 import javax.swing.event.MenuEvent;
 import javax.swing.event.MenuListener;
+import javax.swing.text.AbstractDocument;
+import javax.swing.text.AttributeSet;
+import javax.swing.text.BadLocationException;
+import javax.swing.text.DocumentFilter;
 
 import com.jd.swing.custom.component.button.ButtonType;
 import com.jd.swing.custom.component.button.StandardButton;
@@ -55,6 +65,14 @@ import com.jd.swing.util.Theme;
 public class Main {
 	// GUI Frame
 	private static JFrame frame = new JFrame();
+	
+	private static JPanel innerPanelNewMapRow4;
+	private static JPanel sizePanel;
+	private static JTextField jtfWidth;
+	private static JTextField jtfHeight;
+	private static StandardButton sbApply;
+	private static boolean validWidth = false;
+	private static boolean validHeight = false;
 	
 	// Need to refactor code (editMode)
 	//private static boolean editMode = false;
@@ -103,6 +121,7 @@ public class Main {
 		// Menus
 		JMenu jmFile = new JMenu("File");
 		JMenu jmOptions = new JMenu("Options");
+		JMenu jmGame = new JMenu("Game");
 		JMenu jmHelp = new JMenu("Help");
 		
 		// Menu items (File)
@@ -191,11 +210,10 @@ public class Main {
 		
 		CustomSlider clickSlider = new CustomSlider();
 		clickSlider.setMajorTickSpacing(10);
-		clickSlider.setMinorTickSpacing(5);
 		clickSlider.setPaintTicks(true);
 		clickSlider.setPaintLabels(true);
 		clickSlider.setMinimum(10);
-		clickSlider.setMaximum(30);
+		clickSlider.setMaximum(100);
 		clickSlider.setValue(30);
 		clickSlider.setPreferredSize(new Dimension(200, 50));
 		clickSlider.setSnapToTicks(true);
@@ -206,6 +224,7 @@ public class Main {
 		        JSlider source = (JSlider)ce.getSource();
 		        
 		        if (!source.getValueIsAdjusting()) {
+		        	// Note: redundancy
 		            ForestFire.clickRadius = (int)source.getValue();
 		            ForestFire.clickRadiusSqr = ForestFire.clickRadius * ForestFire.clickRadius;
 		            forestFire.renderFireCursorBlack();
@@ -271,6 +290,38 @@ public class Main {
 
 		jmTree.add(jpViewFire);
 		
+		// Menu Items (Game)
+		JMenu jmWeather = new JMenu("Weather");
+		JMenu jmWildLife = new JMenu("Wild Life");
+		JMenu jmStructures = new JMenu("Structures");
+		
+		JMenuItem jmiRain = new JMenuItem("Rain");
+		JMenuItem jmiWind = new JMenuItem("Wind");
+		JMenuItem jmiTornado = new JMenuItem("Tornado");
+		JMenuItem jmiLightning = new JMenuItem("Lightning");
+		JMenuItem jmiSnow = new JMenuItem("Snow");
+		JMenuItem jmiCombo = new JMenuItem("Combo");
+		
+		jmWeather.add(jmiRain);
+		jmWeather.add(jmiWind);
+		jmWeather.add(jmiTornado);
+		jmWeather.add(jmiLightning);
+		jmWeather.add(jmiSnow);
+		jmWeather.add(jmiCombo);
+		
+		// Event handling for GAME menu ONLY start
+		jmiRain.addActionListener(e -> {
+			forestFire.startSimulationTimer();
+			forestFire.setLeftClickAction(ForestFire.LEFT_ACTION_RAIN);
+		});
+		
+		jmiWind.addActionListener(e -> {
+			forestFire.startSimulationTimer();
+			forestFire.setLeftClickAction(ForestFire.LEFT_ACTION_WIND);
+		});
+		
+		// Event handling for GAME menu ONLY finish
+
 		// Menu items (Help)
 		JMenuItem jmiAbout = new JMenuItem("About");
 		JMenuItem jmiTutorial = new JMenuItem("Tutorial");
@@ -296,7 +347,20 @@ public class Main {
 		CompoundBorder compoundBorder = new CompoundBorder(BorderFactory.createLineBorder(LookAndFeel.COLOR_SOLID_PANELS_BORDER, 4), BorderFactory.createTitledBorder(BorderFactory.createLineBorder(Color.BLACK, 2), "Configure New Map", TitledBorder.CENTER, TitledBorder.CENTER, font));
 		innerPanelNewMap.setBorder(compoundBorder);
 		
+		JPanel innerPanelNewMapRow1 = new JPanel(new FlowLayout(FlowLayout.LEFT));
+		innerPanelNewMapRow1.setOpaque(false);
+		JPanel innerPanelNewMapRow2 = new JPanel(new FlowLayout(FlowLayout.LEFT));
+		innerPanelNewMapRow2.setOpaque(false);
+		JPanel innerPanelNewMapRow3 = new JPanel(new FlowLayout(FlowLayout.LEFT));
+		innerPanelNewMapRow3.setOpaque(false);
+		innerPanelNewMapRow4 = new JPanel(new FlowLayout(FlowLayout.RIGHT));
+		innerPanelNewMapRow4.setOpaque(false);
+		JPanel innerPanelNewMapRow5 = new JPanel(new FlowLayout(FlowLayout.RIGHT));
+		innerPanelNewMapRow5.setOpaque(false);
+		
 		JComboBox<String> jcbMapSize = new JComboBox<String>();
+		jcbMapSize.setFont(new Font("Arial", Font.BOLD, 16));
+		jcbMapSize.setPreferredSize(new Dimension(200, 30));
 		jcbMapSize.setMaximumRowCount(15);
 		jcbMapSize.addItem("Custom size");
 		jcbMapSize.addItem("Fit to screen");
@@ -314,30 +378,140 @@ public class Main {
 
 		jcbMapSize.setSelectedIndex(1);
 
-		JPanel innerPanelNewMapRow1 = new JPanel(new FlowLayout(FlowLayout.CENTER));
-		innerPanelNewMapRow1.setOpaque(false);
-		JPanel innerPanelNewMapRow2 = new JPanel(new FlowLayout(FlowLayout.CENTER));
-		innerPanelNewMapRow2.setOpaque(false);
-		JPanel innerPanelNewMapRow3 = new JPanel(new FlowLayout(FlowLayout.CENTER));
-		innerPanelNewMapRow3.setOpaque(false);
-		JPanel innerPanelNewMapRow4 = new JPanel(new FlowLayout(FlowLayout.CENTER));
-		innerPanelNewMapRow4.setOpaque(false);
-		JPanel innerPanelNewMapRow5 = new JPanel(new FlowLayout(FlowLayout.CENTER));
-		innerPanelNewMapRow5.setOpaque(false);
+		jcbMapSize.addItemListener(e -> {
+			if(e.getItem().equals("Custom size")) {
+				sbApply.setEnabled(false);
+				jtfWidth.setText("");
+				jtfHeight.setText("");
+				validWidth = false;
+				validHeight = false;
+				innerPanelNewMapRow4.add(sizePanel);
+				innerPanelNewMapRow4.repaint();
+				innerPanelNewMapRow4.revalidate();
+			} else {
+				sbApply.setEnabled(true);
+				innerPanelNewMapRow4.remove(sizePanel);
+			}
+		});
+		sizePanel = new JPanel();
+		sizePanel.setOpaque(false);
+		sizePanel.add(new JLabel(" W:"));
+		jtfWidth = new JTextField(4);
+		sizePanel.add(jtfWidth);
+		sizePanel.add(new JLabel(" H:"));
+		jtfHeight = new JTextField(4);
+		sizePanel.add(jtfHeight);
 		
-		StandardButton sbApply = new StandardButton("Apply", ButtonType.BUTTON_ROUNDED_RECTANGLUR, Theme.STANDARD_BLUEGREEN_THEME, Theme.STANDARD_PALEBROWN_THEME, Theme.STANDARD_BLACK_THEME);
+		AbstractDocument docWidth = (AbstractDocument) jtfWidth.getDocument();
+		AbstractDocument docHeight = (AbstractDocument) jtfHeight.getDocument();
+	
+		docWidth.setDocumentFilter(new NumberFilter());
+		docHeight.setDocumentFilter(new NumberFilter());
+		
+		jtfWidth.getDocument().addDocumentListener(new DocumentListener() {
+
+			@Override
+			public void changedUpdate(DocumentEvent de) {
+				// TODO Auto-generated method stub
+			}
+
+			@Override
+			public void insertUpdate(DocumentEvent de) {
+				try {
+					if (Integer.valueOf(jtfWidth.getText()) < 100) {
+						sbApply.setEnabled(false);
+						validWidth = false;
+					} else {
+						validWidth = true;
+						if (validHeight) {
+							sbApply.setEnabled(true);
+						}
+					}					
+				} catch (NumberFormatException ex) {
+					validWidth = false;
+					sbApply.setEnabled(false);
+				}
+			}
+
+			@Override
+			public void removeUpdate(DocumentEvent de) {
+				try {
+					if (Integer.valueOf(jtfWidth.getText()) < 100) {
+						sbApply.setEnabled(false);
+						validWidth = false;
+					} else {
+						validWidth = true;
+						if (validHeight) {
+							sbApply.setEnabled(true);
+						}
+					}					
+				} catch (NumberFormatException ex) {
+					validWidth = false;
+					sbApply.setEnabled(false);
+				}
+			}
+		});
+		
+		jtfHeight.getDocument().addDocumentListener(new DocumentListener() {
+
+			@Override
+			public void changedUpdate(DocumentEvent de) {
+				// TODO Auto-generated method stub
+			}
+
+			@Override
+			public void insertUpdate(DocumentEvent de) {
+				try {
+					if (Integer.valueOf(jtfHeight.getText()) < 100) {
+						sbApply.setEnabled(false);
+						validHeight = false;
+					} else {
+						validHeight = true;
+						if (validWidth) {
+							sbApply.setEnabled(true);
+						}
+					}					
+				} catch (NumberFormatException ex) {
+					validHeight = false;
+					sbApply.setEnabled(false);
+				}
+			}
+
+			@Override
+			public void removeUpdate(DocumentEvent de) {
+				try {
+					if (Integer.valueOf(jtfHeight.getText()) < 100) {
+						sbApply.setEnabled(false);
+						validHeight = false;
+					} else {
+						validHeight = true;
+						if (validWidth) {
+							sbApply.setEnabled(true);
+						}
+					}					
+				} catch (NumberFormatException ex) {
+					validHeight = false;
+					sbApply.setEnabled(false);
+				}
+			}
+		});
+		
+		sbApply = new StandardButton("Apply", ButtonType.BUTTON_ROUNDED_RECTANGLUR, Theme.STANDARD_BLUEGREEN_THEME, Theme.STANDARD_PALEBROWN_THEME, Theme.STANDARD_BLACK_THEME);
 		StandardButton sbCancel = new StandardButton("Cancel", ButtonType.BUTTON_ROUNDED_RECTANGLUR, Theme.STANDARD_BLUEGREEN_THEME, Theme.STANDARD_PALEBROWN_THEME, Theme.STANDARD_BLACK_THEME);
 
-		// Spinner
-		String[] values = {"ULTRA SMALL", "XXXX SMALL", "XXX SMALL", "XX SMALL", "X SMALL", "SMALL", "MEDIUM", "LARGE", "X LARGE", "XX LARGE", "XXX LARGE", "XXXX LARGE", "ULTRA LARGE"};
+		// Spinner (Population)
+		String[] values = {"ULTRA SMALL", "XXX SMALL", "XX SMALL", "X SMALL", "SMALL", "MEDIUM", "LARGE", "X LARGE", "XX LARGE", "XXX LARGE", "ULTRA LARGE"};
 		SpinnerListModel listModel = new SpinnerListModel(values);
 		JSpinner jsPopulation = new JSpinner(listModel);
-		jsPopulation.setValue(values[6]); // This should be a variable for the current value
-		jsPopulation.setEditor(new JSpinner.DefaultEditor(jsPopulation));
+		jsPopulation.setPreferredSize(new Dimension(200, 30));
+		jsPopulation.setValue(values[5]); // This should be a variable for the current value
+		JSpinner.DefaultEditor editor = new JSpinner.DefaultEditor(jsPopulation);
+		editor.getTextField().setFont(new Font("Aria", Font.BOLD, 16));
+		jsPopulation.setEditor(editor);
 		
 		Component mySpinnerEditor = jsPopulation.getEditor();
 		JFormattedTextField jftf = ((JSpinner.DefaultEditor) mySpinnerEditor).getTextField();
-		jftf.setColumns(8);
+		jftf.setColumns(15);
 		jftf.setHorizontalAlignment(SwingConstants.CENTER);
 		
 		// Remove all listeners to this component so selection is disabled
@@ -358,15 +532,11 @@ public class Main {
 			@Override
 			public void mousePressed(MouseEvent me) {
 				if (me.getButton() == MouseEvent.BUTTON1) {
-					if (jftfIndex == values.length - 1) {
-						jftfIndex = 0;
-					} else {
+					if (jftfIndex < values.length - 1) {
 						jftfIndex++;
 					}
 				} else if (me.getButton() == MouseEvent.BUTTON3) {
-					if (jftfIndex == 0) {
-						jftfIndex = values.length - 1;
-					} else {
+					if (jftfIndex > 0) {
 						jftfIndex--;
 					}
 				}
@@ -374,21 +544,86 @@ public class Main {
 				// should set the variable's value
 			}
 		});
+
+		// Spinner (Preset)
+		String[] values2 = {"Create random map", "Create empty map"};
+		SpinnerListModel listModel2 = new SpinnerListModel(values2);
+		JSpinner jsPopulation2 = new JSpinner(listModel2);		
+		jsPopulation2.setPreferredSize(new Dimension(200, 30));
+		jsPopulation2.setValue(values2[0]); // This should be a variable for the current value
+		JSpinner.DefaultEditor editor2 = new JSpinner.DefaultEditor(jsPopulation2);
+		editor2.getTextField().setFont(new Font("Aria", Font.BOLD, 16));
+		jsPopulation2.setEditor(editor2);
+				
+		Component mySpinnerEditor2 = jsPopulation2.getEditor();
+		JFormattedTextField jftf2 = ((JSpinner.DefaultEditor) mySpinnerEditor2).getTextField();
+		jftf2.setColumns(15);
+		jftf2.setHorizontalAlignment(SwingConstants.CENTER);
 		
-		innerPanelNewMapRow1.add(new JLabel("Tree Population"));
-		innerPanelNewMapRow2.add(jsPopulation);
-		innerPanelNewMapRow3.add(new JLabel("Map Size"));
-		innerPanelNewMapRow4.add(jcbMapSize);
+		// Remove all listeners to this component so selection is disabled
+		MouseMotionListener[] mouseMotionListeners2 = jftf2.getMouseMotionListeners();
+		for (int i = 0; i < mouseMotionListeners2.length; i ++) {
+			jftf2.removeMouseMotionListener(mouseMotionListeners2[i]);
+		}
+		
+		MouseListener[] mouseListeners2 = jftf2.getMouseListeners();
+		for (int i = 0; i < mouseListeners2.length; i ++) {
+			jftf2.removeMouseListener(mouseListeners2[i]);
+		}
+		
+		// Add a special listener to this component
+		jftf2.addMouseListener(new MouseAdapter() {
+			int jftfIndex = 0; // should be a variable instead of literal
+
+			@Override
+			public void mousePressed(MouseEvent me) {
+				if (me.getButton() == MouseEvent.BUTTON1) {
+					if (jftfIndex < values2.length - 1) {
+						jftfIndex++;
+					}
+				} else if (me.getButton() == MouseEvent.BUTTON3) {
+					if (jftfIndex > 0) {
+						jftfIndex--;
+					}
+				}
+				jsPopulation2.setValue(values2[jftfIndex]);
+				// should set the variable's value
+				System.out.println("hello world");
+			}
+		});
+		
+		JCheckBoxMenuItem jcbmiFillMap = new JCheckBoxMenuItem("Fill Map");
+		jcbmiFillMap.setOpaque(false);
+		
+		JLabel jlPopulation = new JLabel("Tree Population");
+		jlPopulation.setPreferredSize(new Dimension(130, 30));
+		jlPopulation.setHorizontalAlignment(SwingConstants.RIGHT);
+		jlPopulation.setFont(new Font("Arial", Font.BOLD, 16));
+		innerPanelNewMapRow1.add(jlPopulation);
+		innerPanelNewMapRow1.add(jsPopulation);
+		
+		JLabel jlPreset = new JLabel("Map Preset");
+		jlPreset.setPreferredSize(new Dimension(130, 30));
+		jlPreset.setHorizontalAlignment(SwingConstants.RIGHT);
+		jlPreset.setFont(new Font("Arial", Font.BOLD, 16));
+		innerPanelNewMapRow2.add(jlPreset);
+		innerPanelNewMapRow2.add(jsPopulation2);
+
+		JLabel jlMapSize = new JLabel("Map Size");
+		jlMapSize.setPreferredSize(new Dimension(130, 20));
+		jlMapSize.setHorizontalAlignment(SwingConstants.RIGHT);
+		jlMapSize.setFont(new Font("Arial", Font.BOLD, 16));
+		innerPanelNewMapRow3.add(jlMapSize);
+		innerPanelNewMapRow3.add(jcbMapSize);
 		innerPanelNewMapRow5.add(sbApply);
 		innerPanelNewMapRow5.add(sbCancel);
 		
 		innerPanelNewMap.add(innerPanelNewMapRow1);
 		innerPanelNewMap.add(innerPanelNewMapRow2);
-		innerPanelNewMap.add(new JSeparator(SwingConstants.HORIZONTAL));
 		innerPanelNewMap.add(innerPanelNewMapRow3);
 		innerPanelNewMap.add(innerPanelNewMapRow4);
-		innerPanelNewMap.add(new JSeparator(SwingConstants.HORIZONTAL));
 		innerPanelNewMap.add(innerPanelNewMapRow5);
+		innerPanelNewMap.add(new JSeparator(SwingConstants.HORIZONTAL));
 		innerPanelNewMap.add(Box.createVerticalGlue());
 		
 		JPanel jpNewMap = new JPanel();
@@ -409,7 +644,7 @@ public class Main {
 			}
 			
 		});
-
+		
 		innerPanelNewMap.addMouseListener(new MouseAdapter() {
 
 			@Override
@@ -419,6 +654,46 @@ public class Main {
 				// Without this, clicking the child component will trigger setVisible(false)
 			}
 		});
+		
+		JDialog jdChooseSize = new JDialog();
+		
+		// Transparency tweak START
+		jdChooseSize.setUndecorated(true);
+		jdChooseSize.getRootPane().setOpaque(false);
+		jdChooseSize.getContentPane().setBackground(new Color(0, 0, 0, 0));
+		jdChooseSize.setBackground(new Color(0, 0, 0, 0));
+		// Transparency tweak FINISH
+		
+		jdChooseSize.setAlwaysOnTop(false);
+		jdChooseSize.setModalityType(ModalityType.APPLICATION_MODAL);
+		jdChooseSize.setModal(true);
+		
+		JPanel innerPanelChooseSize = new JPanel();
+		innerPanelChooseSize.setLayout(new BoxLayout(innerPanelChooseSize, BoxLayout.Y_AXIS));
+		innerPanelChooseSize.setBackground(LookAndFeel.COLOR_SOLID_PANELS);
+		Font font2 = new Font(innerPanelNewMap.getFont().getFontName(), Font.BOLD, 14);
+		CompoundBorder compoundBorder2 = new CompoundBorder(BorderFactory.createLineBorder(LookAndFeel.COLOR_SOLID_PANELS_BORDER, 4), BorderFactory.createTitledBorder(BorderFactory.createLineBorder(Color.BLACK, 2), "Configure New Map", TitledBorder.CENTER, TitledBorder.CENTER, font2));
+		innerPanelChooseSize.setBorder(compoundBorder2);
+		
+		innerPanelChooseSize.add(new JLabel("Choose Map Size"));
+		
+		JPanel jpChooseSize = new JPanel();
+		jpChooseSize.setBackground(LookAndFeel.COLOR_TRANSLUCENT_BLACK);
+		jpChooseSize.setLayout(new GridBagLayout());
+		jpChooseSize.add(innerPanelChooseSize, new GridBagConstraints());
+
+		jdChooseSize.setContentPane(jpChooseSize);
+		jdChooseSize.setSize(ForestFire.screenWidth, ForestFire.screenHeight);
+		
+		/***
+		 * 
+		 * 
+		 * 
+		 * 
+		 * 
+		 * 
+		 * 
+		 */
 		
 		JDialog jdAbout = new JDialog();
 		
@@ -456,11 +731,11 @@ public class Main {
 			
 		});
 		
-		sbApply.addActionListener(e -> {
+		sbApply.addActionListener(e -> {			
 			// Temporay solution for MapSize
 			switch ((String)jcbMapSize.getSelectedItem()) {
 				case "Custom size":
-					// open resolution dialog here
+					forestFire.setMapSize(Integer.valueOf(jtfWidth.getText()), Integer.valueOf(jtfHeight.getText()));
 					break;
 				case "Fit to Screen":
 					forestFire.setMapSize(ForestFire.screenWidth, ForestFire.screenHeight);
@@ -496,60 +771,55 @@ public class Main {
 					forestFire.setMapSize(ForestFire.screenWidth, ForestFire.screenHeight);
 			}
 			
-			// Temporary solution for Population
-			System.out.println("Value: " + (String)jsPopulation.getValue());
-			
+			// Temporary solution for Population			
 			int selectedIndex = 0;
 			switch ((String)jsPopulation.getValue()) {
 				case "ULTRA LARGE":
 					selectedIndex = 0;
 					break;
-				case "XXXX LARGE":
+				case "XXX LARGE":
 					selectedIndex = 1;
 					break;
-				case "XXX LARGE":
+				case "XX LARGE":
 					selectedIndex = 2;
 					break;
-				case "XX LARGE":
+				case "X LARGE":
 					selectedIndex = 3;
 					break;
-				case "X LARGE":
+				case "LARGE":
 					selectedIndex = 4;
 					break;
-				case "LARGE":
+				case "MEDIUM":
 					selectedIndex = 5;
 					break;
-				case "MEDIUM":
+				case "SMALL":
 					selectedIndex = 6;
 					break;
-				case "SMALL":
+				case "X SMALL":
 					selectedIndex = 7;
 					break;
-				case "X SMALL":
+				case "XX SMALL":
 					selectedIndex = 8;
 					break;
-				case "XX SMALL":
+				case "XXX SMALL":
 					selectedIndex = 9;
 					break;
-				case "XXX SMALL":
+				case "ULTRA SMALL":
 					selectedIndex = 10;
 					break;
-				case "XXXX SMALL":
-					selectedIndex = 11;
-					break;
-				case "ULTRA SMALL":
-					selectedIndex = 12;
-					break;
 			}
+			
 			forestFire.setPopulationFactorAndSize(selectedIndex);
 			forestFire.setDialogOpen(false);
-
 			forestFire.setEditMode(true);
-			forestFire.fillTrees();
 			
+			if (jsPopulation2.getValue().equals("Create random map")) {
+				forestFire.fillTrees();				
+			} else {
+				forestFire.emptyMap();
+			}
 			jdNewMap.setVisible(false);
 		});
-		
 		
 		sbCancel.addActionListener(e -> {
 			forestFire.setDialogOpen(false);
@@ -604,6 +874,10 @@ public class Main {
 		jmOptions.add(jmView);
 		jmOptions.add(jmTree);
 		jmOptions.add(jmPlayback);
+
+		jmGame.add(jmWeather);
+		jmGame.add(jmWildLife);
+		jmGame.add(jmStructures);
 		jmHelp.add(jmiAbout);
 		jmHelp.add(jmiTutorial);
 		
@@ -611,6 +885,7 @@ public class Main {
 		JMenuBar jmbForestFire = new JMenuBar();
 		jmbForestFire.add(jmFile);
 		jmbForestFire.add(jmOptions);
+		jmbForestFire.add(jmGame);
 		jmbForestFire.add(jmHelp);
 
 		jmFile.addMenuListener(new MenuListener() {
@@ -664,6 +939,23 @@ public class Main {
 			}
 		});
 		
+		jmGame.addMenuListener(new MenuListener() {
+			
+			@Override
+			public void menuSelected(MenuEvent e) {
+				forestFire.hideGameStats(true);
+			}
+			
+			@Override
+			public void menuDeselected(MenuEvent e) {
+				forestFire.hideGameStats(false);
+			}
+			
+			@Override
+			public void menuCanceled(MenuEvent e) {
+			}
+		});
+		
         frame.addWindowListener(new WindowAdapter() {
             @Override
             public void windowIconified(WindowEvent e) {
@@ -691,4 +983,51 @@ public class Main {
 		forestFire.setGameStatsVisible(true);
 		forestFire.hideGameStats(false);
 	}
+	
+    /*
+     * Regular Expression tool:
+     * 
+     * http://utilitymill.com/utility/Regex_For_Range
+     */
+    static class NumberFilter extends DocumentFilter {
+        private Pattern pattern;
+
+        public NumberFilter() {
+            pattern = Pattern.compile("([0-9]{1,4}|10000)");
+        }
+
+        // manual invocation
+        @Override
+        public void insertString(FilterBypass fb, int offset, String string, AttributeSet attr) throws BadLocationException {
+            String newStr = fb.getDocument().getText(0, fb.getDocument().getLength()) + string;
+            Matcher m = pattern.matcher(newStr);
+
+            if (m.matches()) {
+                super.insertString(fb, offset, string, attr);
+            } else {
+                Toolkit.getDefaultToolkit().beep();
+            }
+        }
+
+        // automatic invocation
+        @Override
+        public void remove(DocumentFilter.FilterBypass fb, int offset, int length) throws BadLocationException {
+            try {
+            	
+            } catch (NumberFormatException ex) {
+            	System.out.println("EXCEPTION FOUND");
+            }
+        	super.remove(fb, offset, length);
+        }
+
+        // automatic invocation
+        @Override
+        public void replace(FilterBypass fb, int offset, int length, String string, AttributeSet attr) throws BadLocationException {
+            if (length > 0) {
+                fb.remove(offset, length);
+            }
+
+            insertString(fb, offset, string, attr);
+        }
+    }
 }

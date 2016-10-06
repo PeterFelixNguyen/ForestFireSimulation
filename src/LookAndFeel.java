@@ -24,6 +24,13 @@ public class LookAndFeel {
 	public static final Color COLOR_SOLID_DARK_TEXT = new Color(40, 40, 40, 255);
 	public static final Color COLOR_TRANSLUCENT_BLACK = new Color(0, 0, 0, 127);
 	
-	// Game object colors
+	// Game object colors (perhaps these should belong to the object)
 	public static final Color COLOR_SOLID_TREE_LEAVES = new Color(30, 150, 70, 255);
+	
+	// Mouse Cursor Colors (perhaps should also belong to the object)
+	public static final Color COLOR_TRANSLUCENT_LENS_FIRE = new Color(255, 40, 40, 120);
+	public static final Color COLOR_TRANSLUCENT_LENS_RAIN = new Color(90, 190, 200, 120);
+	public static final Color COLOR_SOLID_BORDER_RAIN = new Color(20, 10, 210, 255);
+	public static final Color COLOR_TRANSLUCENT_LENS_WIND = new Color(190, 190, 190, 120);
+	public static final Color COLOR_SOLID_BORDER_WIND = new Color(40, 40, 40, 255);
 }

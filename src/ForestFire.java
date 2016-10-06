@@ -33,6 +33,8 @@ import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.awt.event.MouseListener;
 import java.awt.event.MouseMotionListener;
+import java.awt.event.MouseWheelEvent;
+import java.awt.event.MouseWheelListener;
 import java.awt.geom.Line2D;
 import java.awt.geom.Rectangle2D;
 import java.awt.image.BufferedImage;
@@ -49,12 +51,17 @@ import javax.swing.BoxLayout;
 import javax.swing.JComboBox;
 import javax.swing.JComponent;
 import javax.swing.JLabel;
+import javax.swing.JMenu;
+import javax.swing.JMenuItem;
 import javax.swing.JPanel;
+import javax.swing.JPopupMenu;
 import javax.swing.JScrollBar;
 import javax.swing.JScrollPane;
+import javax.swing.JSeparator;
 import javax.swing.JViewport;
 import javax.swing.JWindow;
 import javax.swing.ScrollPaneConstants;
+import javax.swing.SwingConstants;
 import javax.swing.Timer;
 import javax.swing.border.LineBorder;
 
@@ -63,11 +70,29 @@ import com.jd.swing.custom.component.button.StandardButton;
 import com.jd.swing.util.Theme;
 
 @SuppressWarnings("serial")
-public class ForestFire extends JPanel implements ActionListener {
+public class ForestFire extends JPanel {
 	protected static JScrollPane jspForestFire;
 	private GameStats gameStats = new GameStats();
 	private JPanel mapPanel = new JPanel();
 
+	// I will use Strings for left-click actions (for now)
+	public static final String LEFT_ACTION_FIRE = "Fire";
+	public static final String LEFT_ACTION_RAIN = "Rain";
+	public static final String LEFT_ACTION_WIND = "Wind";
+	public static final String LEFT_ACTION_TORNADO = "Tornado";
+	public static final String LEFT_ACTION_LIGHTNING = "Lightning";
+	public static final String LEFT_ACTION_COMBO = "Combo";
+	private String leftClickAction = LEFT_ACTION_FIRE;
+	
+	// Array of WeatherObjects
+	private ArrayList<WeatherObject> weatherObjects = new ArrayList<WeatherObject>();
+	private WeatherObject currentWeatherObject;
+
+	public void setLeftClickAction(String leftClickAction) {
+		this.leftClickAction = leftClickAction;
+        renderFireCursorBlack(); // no if statement required
+	}
+	
 	// Constants to specify map resolution
 	public final static String RESOLUTION_WVGA = "800x480";
 	public final static String RESOLUTION_WSVGA = "1024x600";
@@ -83,19 +108,19 @@ public class ForestFire extends JPanel implements ActionListener {
 	public final static int HEIGHT_DEFAULT = 600;
 	public final static int WIDTH_TEST = 1200;
 	public final static int HEIGHT_TEST = 600;
+	public final static int MIN_WIDTH = 100;
+	public final static int MIN_HEIGHT = 100;
 
 	// Constants to specify percentage of trees
-	public static final double POPULATION_XXXXLARGE = 0.00125;
-	public static final double  POPULATION_XXXLARGE = 0.00115;
-	public static final double   POPULATION_XXLARGE = 0.00095;
-	public static final double    POPULATION_XLARGE = 0.00085;
-	public static final double     POPULATION_LARGE = 0.00075;
+	public static final double  POPULATION_XXXLARGE = 0.003290625;
+	public static final double   POPULATION_XXLARGE = 0.00219375;
+	public static final double    POPULATION_XLARGE = 0.0014625;
+	public static final double     POPULATION_LARGE = 0.000975;
 	public static final double    POPULATION_MEDIUM = 0.00065;
-	public static final double     POPULATION_SMALL = 0.00055;
-	public static final double    POPULATION_XSMALL = 0.00045;
-	public static final double   POPULATION_XXSMALL = 0.00035;
-	public static final double  POPULATION_XXXSMALL = 0.00025;
-	public static final double POPULATION_XXXXSMALL = 0.00015;
+	public static final double     POPULATION_SMALL = 0.00060;
+	public static final double    POPULATION_XSMALL = 0.00050;
+	public static final double   POPULATION_XXSMALL = 0.00040;
+	public static final double  POPULATION_XXXSMALL = 0.00030;
 	
 	// Map settings
 	private static double selectedPopulation;
@@ -131,7 +156,11 @@ public class ForestFire extends JPanel implements ActionListener {
 	static Set<Tree> ignitedTrees = new HashSet<Tree>();
 
 	// Fire animation
-	private static final int ANIMATION_LENGTH = 75;
+	public static final int SEQUENCE_LENGTH = 3;
+	public static final int SEQUENCE_MULTIPLIER = 8; // ONLY THIS VARIABLE SHOULD BE CHANGED
+	public static final int SEQUENCE_LENGTH_MULTIPLIED = SEQUENCE_LENGTH * SEQUENCE_MULTIPLIER;
+	public static final int UNIQUE_SEQUENCES = 5;
+	public static final int ANIMATION_LENGTH = SEQUENCE_LENGTH * SEQUENCE_MULTIPLIER * UNIQUE_SEQUENCES;
 	private static VolatileImage[] vfireAnimation = new VolatileImage[ANIMATION_LENGTH];
 
 	// Individual frames for fire animation (drawn over VolatileImage)
@@ -174,7 +203,7 @@ public class ForestFire extends JPanel implements ActionListener {
 
 	// Thread timers
 	private static Timer timerSimulation;
-	private static Timer timerScroll;
+	private static Timer timerView;
 	private static Timer timerReplay;
 	private int firstAltSequenceCounter = 0;
 	private int secondAltSequenceCounter = 0;	
@@ -230,19 +259,26 @@ public class ForestFire extends JPanel implements ActionListener {
 	private boolean healthOverlayEnabled = false;
 	
 	// Boolean Playback Flags
-	private boolean clickUnpauses = true;
+	private boolean unpausedOnClick = true;
+	private boolean playing = false;
 	
 	// Boolean Mouse Flags
 	private boolean mousePressedLeft = false;
 	private boolean mousePressedRight = false;
+	private boolean mouseEntered = false;
 	
 	// Edit Mode
 	private boolean editMode = false;
-	private String paintBrush = "Tree";
-	private final String BRUSH_TREE = "Tree";
-	private final String BRUSH_LAND = "Land";
-	private final String BRUSH_SEA = "Sea";
-
+	private String makeType = "Tree";
+	private final String MAKE_TREE = "Tree";
+	private final String MAKE_LAND = "Land";
+	private final String MAKE_SEA = "Sea";
+	private String paintType = "Brush";
+	private final String PAINT_PEN = "Pen";
+	private final String PAINT_BRUSH = "Brush";
+	private final String PAINT_RANDOM = "Random";
+	private final String PAINT_FILL = "Fill";
+	
 	// Map control
 	private int xClick;
 	private int yClick;
@@ -258,16 +294,16 @@ public class ForestFire extends JPanel implements ActionListener {
 		resolution = RESOLUTION_DEVICE;
 
 		jspForestFire = new JScrollPane(mapPanel, ScrollPaneConstants.VERTICAL_SCROLLBAR_NEVER, ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
-		jspForestFire.setBorder(null); // removes unwanted border
-		Dimension fixedSize2 = new Dimension(screenWidth, screenHeight - heightOfOtherComponents);
-		jspForestFire.setPreferredSize(fixedSize2);
-		jspForestFire.setSize(fixedSize2);
-		jspForestFire.setMinimumSize(fixedSize2);
-		jspForestFire.setMaximumSize(fixedSize2);
+		jspForestFire.getViewport().setScrollMode(JViewport.SIMPLE_SCROLL_MODE); // disable repaint
+		jspForestFire.setBorder(null); 
+		Dimension viewDimension = new Dimension(screenWidth, screenHeight - heightOfOtherComponents);
+		jspForestFire.setPreferredSize(viewDimension);
+		jspForestFire.setSize(viewDimension);
+		jspForestFire.setMinimumSize(viewDimension);
+		jspForestFire.setMaximumSize(viewDimension);
 		
 		// Set the size of container
-//		setMapSize(screenWidth, screenHeight); // default
-		setMapSize(3000, 3000); // test
+		setMapSize(2560, 1600); // test
 		
 		// maxTrees = x-percentage of total pixels
 		selectedPopulation = POPULATION_MEDIUM;
@@ -320,7 +356,7 @@ public class ForestFire extends JPanel implements ActionListener {
 			renderFireCursorRed();
 			
 			for (int i = 0; i < ANIMATION_LENGTH; i++) {
-				if (i < 15) {
+				if (i < SEQUENCE_LENGTH_MULTIPLIED * 1) {
 					if (i % 3 == 0) {
 						vfireAnimation[i] = viFire11;
 					} else if (i % 3 == 1) {
@@ -328,7 +364,7 @@ public class ForestFire extends JPanel implements ActionListener {
 					} else if (i % 3 == 2) {
 						vfireAnimation[i] = viFire13;
 					}
-				} else if (i < 30) {
+				} else if (i < SEQUENCE_LENGTH_MULTIPLIED * 2) {
 					if (i % 3 == 0) {
 						vfireAnimation[i] = viFire21;
 					} else if (i % 3 == 1) {
@@ -336,7 +372,7 @@ public class ForestFire extends JPanel implements ActionListener {
 					} else if (i % 3 == 2) {
 						vfireAnimation[i] = viFire23;
 					}
-				} else if (i < 45) {
+				} else if (i < SEQUENCE_LENGTH_MULTIPLIED * 3) {
 					if (i % 3 == 0) {
 						vfireAnimation[i] = viFire31;
 					} else if (i % 3 == 1) {
@@ -344,7 +380,7 @@ public class ForestFire extends JPanel implements ActionListener {
 					} else if (i % 3 == 2) {
 						vfireAnimation[i] = viFire33;
 					}
-				} else if (i < 60) {
+				} else if (i < SEQUENCE_LENGTH_MULTIPLIED * 4) {
 					if (i % 3 == 0) {
 						vfireAnimation[i] = viFire41;
 					} else if (i % 3 == 1) {
@@ -366,45 +402,102 @@ public class ForestFire extends JPanel implements ActionListener {
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
+		
+		JPopupMenu jpmGameObjects = new JPopupMenu();
+		JMenuItem jmiFire = new JMenuItem("Fire");
+		JMenu jmWeather = new JMenu("Weather");
+		JMenuItem jmiRain = new JMenuItem("Rain");
+		JMenuItem jmiWind = new JMenuItem("Wind");
+		JMenuItem jmiTornado = new JMenuItem("Tornado");
+		JMenuItem jmiLightning = new JMenuItem("Lightning");
+		JMenuItem jmiSnow = new JMenuItem("Snow");
+		JMenuItem jmiCombo = new JMenuItem("Combo");
+		jpmGameObjects.add(new JMenuItem("Pause/Resume"));
+		jpmGameObjects.add(new JSeparator(SwingConstants.HORIZONTAL));
+		jpmGameObjects.add(jmiFire);
+		jmWeather.add(jmiRain);
+		jmWeather.add(jmiWind);
+		jmWeather.add(jmiTornado);
+		jmWeather.add(jmiLightning);
+		jmWeather.add(jmiSnow);
+		jmWeather.add(jmiCombo);
+		
+		jmiFire.addActionListener(e -> {
+			startSimulationTimer();
+			setLeftClickAction(LEFT_ACTION_FIRE);
+		});
+		
+		jmiRain.addActionListener(e -> {
+			startSimulationTimer();
+			setLeftClickAction(LEFT_ACTION_RAIN);
+		});
+		
+		jmiWind.addActionListener(e -> {
+			startSimulationTimer();
+			setLeftClickAction(LEFT_ACTION_WIND);
+		});
+		
+		jpmGameObjects.add(jmWeather);
 
 		addMouseListener(new MouseListener() {
 			
 			@Override
 			public void mousePressed(MouseEvent me) {				
 				fireCursorClicked = true;
-				
+								
 				if (me.getButton() == MouseEvent.BUTTON1) {
 					mousePressedLeft = true;
 
 					if (!editMode) {
-						
-						if (stopped || paused) {
-							repaint();
-						}
-						
 						if (!replayMode) {
-							boolean treeClicked = clickIgniteTrees(me.getX(), me.getY());
-									
-							if (treeClicked) {
-								stopped = false;
-								clickHistory.add(new ClickAction(me.getX(), me.getY(), tick));						
+							if (leftClickAction.equals(LEFT_ACTION_FIRE)) {
+								boolean treeClicked = clickIgniteTrees(me.getX(), me.getY());
+	
+								if (treeClicked) {
+									stopped = false;
+									clickHistory.add(new ClickAction(me.getX(), me.getY(), tick));						
+								}
+							} else if (leftClickAction.equals(LEFT_ACTION_RAIN)) {
+								currentWeatherObject = new Rain(me.getX(), me.getY(), clickRadius, clickRadius);
+								weatherObjects.add(currentWeatherObject);
+								currentWeatherObject.setDestination(me.getX(), me.getY());
+							} else if (leftClickAction.equalsIgnoreCase(LEFT_ACTION_WIND)) {
+								currentWeatherObject = new Wind(me.getX(), me.getY(), clickRadius, clickRadius);
+								weatherObjects.add(currentWeatherObject);
+								currentWeatherObject.setDestination(me.getX(), me.getY());
 							}
 						}
 						
-						if (paused && clickUnpauses) {
+						if (paused && unpausedOnClick) {
 							mapButtons.play();
 						}
 					} else {
-						if (paintBrush.equals(BRUSH_TREE)) {
- 
-						} else if (paintBrush.equals(BRUSH_LAND)) {
-							clickMakeLand(me.getX(), me.getY());
-						} else if (paintBrush.equals(BRUSH_SEA)) {
+						if (makeType.equals(MAKE_TREE)) {
+							if (paintType.equals(PAINT_PEN)) {
+								clickMakeTree(me.getX(), me.getY());								
+							} else if (paintType.equals(PAINT_BRUSH)) {
+								clickMakeTrees(me.getX(), me.getY());
+							} else if (paintType.equals(PAINT_RANDOM)) {
+								clickRandomTrees(me.getX(), me.getY());
+							} else if (paintType.equals(PAINT_FILL)) {
+									fillTrees();
+							}
+
+							Collections.sort(sortedTrees, new TreeComparator());
+
+							// Add neighboring trees to each tree
+							TreeGrouper.buildTreeSets(sortedTrees);	
+						} else if (makeType.equals(MAKE_LAND)) {
+							if (paintType.equals(PAINT_BRUSH)) {
+								clickMakeLand(me.getX(), me.getY());
+							} else if (paintType.equals(PAINT_FILL)) {
+								emptyMap();
+							}
+						} else if (makeType.equals(MAKE_SEA)) {
 
 						} else {
 							System.out.println("NO ACTION");
 						}
-						repaint();
 					}
 				} else if (me.getButton() == MouseEvent.BUTTON3) {
 					mousePressedRight = true; // PROBABLY NOT NEEDED
@@ -412,39 +505,42 @@ public class ForestFire extends JPanel implements ActionListener {
 
 					xClick = (int) me.getLocationOnScreen().getX();
 					yClick = (int) me.getLocationOnScreen().getY();
+					
+					if (me.getClickCount() == 2) {
+						jpmGameObjects.show(me.getComponent(), me.getX(), me.getY());
+					}
 				}
 			}
 			
 			@Override
-			public void mouseReleased(MouseEvent e) {
-				mousePressedLeft = false;
+			public void mouseReleased(MouseEvent me) {
 				mousePressedRight = false;
 				fireCursorClicked = false;
 				
-				if (!editMode) {
-					if (stopped || paused) {
-						repaint();
-					}
+				if (leftClickAction != LEFT_ACTION_FIRE && mousePressedLeft) {
+					leftClickAction = LEFT_ACTION_FIRE;
+					currentWeatherObject.setDestination(me.getX(), me.getY());
+					currentWeatherObject.setStill(false);
+					currentWeatherObject.calculateDirection();
+					clickRadius = 100;
+					clickRadiusSqr = clickRadius * clickRadius;
+					renderFireCursorBlack();
+					renderFireCursorRed();
 				}
 				
-				// Draw invisible cursor
-				Toolkit toolkit = Toolkit.getDefaultToolkit();
-			    Point hotSpot = new Point(0,0);
-			    BufferedImage cursorImage = new BufferedImage(1, 1, BufferedImage.TRANSLUCENT); 
-			    Cursor invisibleCursor = toolkit.createCustomCursor(cursorImage, hotSpot, "InvisibleCursor");        
-			    setCursor(invisibleCursor);
+				mousePressedLeft = false;
+
+				makeCursorInvisible();
 			}
 
 			@Override
 			public void mouseExited(MouseEvent e) {
-				mouseXPosition = -100;
-				mouseYPosition = -100;
-				repaint();
+				mouseEntered = false;
 			}
 
 			@Override
 			public void mouseEntered(MouseEvent e) {
-
+				mouseEntered = true;
 			}
 
 			@Override
@@ -460,24 +556,38 @@ public class ForestFire extends JPanel implements ActionListener {
 				mouseXPosition = me.getX();
 				mouseYPosition = me.getY();
 				
-				if (stopped || paused) {
-					repaint();
-				}
-				
 				if (mousePressedLeft) {
 					if (!editMode && !replayMode) {
-						boolean treeClicked = clickIgniteTrees(me.getX(), me.getY());
-								
-						if (treeClicked) {
-							stopped = false;
-							clickHistory.add(new ClickAction(me.getX(), me.getY(), tick));						
+						if (leftClickAction == LEFT_ACTION_FIRE) {
+							boolean treeClicked = clickIgniteTrees(me.getX(), me.getY());
+							if (treeClicked) {
+								stopped = false;
+								clickHistory.add(new ClickAction(me.getX(), me.getY(), tick));						
+							}
+						} else {
+							currentWeatherObject.setDestination(me.getX(), me.getY());
 						}
 					} else {
-						if (paintBrush.equals(BRUSH_TREE)) {
-
-						} else if (paintBrush.equals(BRUSH_LAND)) {
-							clickMakeLand(me.getX(), me.getY());
-						} else if (paintBrush.equals(BRUSH_SEA)) {
+						if (makeType.equals(MAKE_TREE)) {
+							if (paintType.equals(PAINT_PEN)) {
+								dragMakeTree(me.getX(), me.getY());								
+							} else if (paintType.equals(PAINT_BRUSH)) {
+								clickMakeTrees(me.getX(), me.getY());
+							} else if (paintType.equals(PAINT_RANDOM)) {
+								clickRandomTrees(me.getX(), me.getY());
+							}
+							
+							Collections.sort(sortedTrees, new TreeComparator());
+							
+							// Add neighboring trees to each tree
+							TreeGrouper.buildTreeSets(sortedTrees);	
+						} else if (makeType.equals(MAKE_LAND)) {
+							if (paintType.equals(PAINT_BRUSH)) {
+								clickMakeLand(me.getX(), me.getY());
+							} else if (paintType.equals(PAINT_FILL)) {
+								
+							}
+						} else if (makeType.equals(MAKE_SEA)) {
 
 						} else {
 
@@ -508,17 +618,58 @@ public class ForestFire extends JPanel implements ActionListener {
 			public void mouseMoved(MouseEvent me) {
 				mouseXPosition = me.getX();
 				mouseYPosition = me.getY();
-			    
-				if (stopped || paused) {
-					repaint();
+				
+				makeCursorInvisible();
+			}
+		});
+		
+		addMouseWheelListener(new MouseWheelListener() {
+			@Override
+			public void mouseWheelMoved(MouseWheelEvent mwe) {
+				int direction = mwe.getWheelRotation();
+				
+				if (direction > 0) {
+					if (leftClickAction == LEFT_ACTION_FIRE) {
+						if (clickRadius > 10) {
+							if (clickRadius - 20 < 10) {
+								clickRadius = 10;
+							} else {
+								clickRadius = clickRadius - 20;
+							}
+						}
+					} else {
+						if (clickRadius > 100) {
+							if (clickRadius - 20 < 100) {
+								clickRadius = 100;
+							} else {
+								clickRadius = clickRadius - 20;								
+							}
+						} 
+					}
+				} else {
+					if (leftClickAction == LEFT_ACTION_FIRE) {
+						if (clickRadius < 100) {
+							if (clickRadius + 20 > 100) {
+								clickRadius = 100;
+							} else {
+								clickRadius = clickRadius + 20;
+							}
+						} 
+					} else {
+						if (clickRadius < 1000) {
+							if (clickRadius + 20 > 1000) {
+								clickRadius = 1000;
+							} else {
+								clickRadius = clickRadius + 20;
+							}
+			            } 
+					}
 				}
 				
-				// Draw invisible cursor
-				Toolkit toolkit = Toolkit.getDefaultToolkit();
-			    Point hotSpot = new Point(0,0);
-			    BufferedImage cursorImage = new BufferedImage(1, 1, BufferedImage.TRANSLUCENT); 
-			    Cursor invisibleCursor = toolkit.createCustomCursor(cursorImage, hotSpot, "InvisibleCursor");        
-			    setCursor(invisibleCursor);
+				// Note: redundancy
+	            clickRadiusSqr = clickRadius * clickRadius;
+	            renderFireCursorBlack();
+	            renderFireCursorRed();
 			}
 		});
 
@@ -526,110 +677,95 @@ public class ForestFire extends JPanel implements ActionListener {
 		mapPanel.add(ForestFire.this, new GridBagConstraints());
 		
 		// Timer for simulation
-		timerSimulation = new Timer(simDelay, this);
-		
-		timerScroll = new Timer(simDelay, new ActionListener() {
+		timerSimulation = new Timer(simDelay, new ActionListener() {
 			@Override
-			public void actionPerformed(ActionEvent arg0) {				
-				if (!mousePressedRight) {
-					JViewport viewport = jspForestFire.getViewport();
-
-					JScrollBar verticalScrollBar = jspForestFire.getVerticalScrollBar();
-					
-					int yMin = verticalScrollBar.getMinimum();
-					int yMax = (int) (viewport.getView().getHeight() - viewport.getExtentSize().getHeight());
-	
-					// The height of ViewPort subtracted by height of ChildView is the actual yMax
-					int oldValueY = jspForestFire.getVerticalScrollBar().getValue();
-					int newValueY;
-	
-					int yDirection;
-	
-					/* I had to come up with my own technique that works for diagonal edge scroll because
-					   getVerticalScrollBar.setValue() and getHorizontalScrollBar.setValue() 
-					   does not happen concurrently so the animation would be choppy. ~Peter "Felix" Nguyen */
-		
-					/* With the regular method, the map would scroll vertically and then horizontally 
-					   (not truly diagonal). My implementation ensures that if the mouse is at the 
-					   corner of the map, the JScrollPane would scroll diagonally. ~Peter "Felix" Nguyen */
-					
-					/* I call this Octo-directional scrolling */
-					
-					if (MouseInfo.getPointerInfo().getLocation().getY() < 0 + 2) {
-						yDirection = -40;
-						newValueY = Math.max(oldValueY + yDirection, yMin);
-					} else if (MouseInfo.getPointerInfo().getLocation().getY() > ForestFire.screenHeight - 2) {
-						yDirection = +40;
-						newValueY = Math.min(oldValueY + yDirection, yMax);
-					} else {
-						yDirection = 0;
-						newValueY = oldValueY + yDirection;
-					}
-	
-					JScrollBar horizontalScrollBar = jspForestFire.getHorizontalScrollBar();
-					
-					// The width of ViewPort subtracted by width of ChildView is the actual xMax
-					int xMin = horizontalScrollBar.getMinimum();
-					int xMax = (int) (viewport.getView().getWidth() - viewport.getExtentSize().getWidth());
-					
-					int oldValueX = jspForestFire.getHorizontalScrollBar().getValue();
-					int newValueX;
-					
-					int xDirection;
-	
-					if (MouseInfo.getPointerInfo().getLocation().getX() < 0 + 2) {
-						xDirection = -40;
-						newValueX = Math.max(oldValueX + xDirection, xMin);
-					} else if (MouseInfo.getPointerInfo().getLocation().getX() > ForestFire.screenWidth - 2) {
-						xDirection = +40;
-						newValueX = Math.min(oldValueX + xDirection, xMax);
-					} else {
-						xDirection = 0;
-						newValueX = oldValueX + xDirection;
-					}
-					
-					// Update mouse cursor location
-					mouseXPosition += xDirection;
-					mouseYPosition += yDirection;
-					if (!timerSimulation.isRunning() && !timerReplay.isRunning()) {
-						repaint();
-					}
-					
-					// Octo-directional scrolling!
-					jspForestFire.getViewport().setViewPosition(new Point(newValueX, newValueY));
-				}
-				
-			}
-		});
-		
-		timerScroll.start();
-		
-		// Timer for replay (should consider using ONE timer)
-		timerReplay = new Timer(simDelay, new ActionListener() {
-			
-			@Override
-			public void actionPerformed(ActionEvent e) {
+			public void actionPerformed(ActionEvent e) {						
 				if (tick < 10000 && !paused) {
+					if (!paused) {
+						firstAltSequenceCounter++;
+					}
 					
-					getReplaySlider().setPercentPosition(tick, replayDuration);
+					for (int i = 0; i < sortedTrees.size(); i++) {
+						if (sortedTrees.get(i).getState().equals(Tree.RED) && sortedTrees.get(i).getHealth() < ANIMATION_LENGTH - 1 && firstAltSequenceCounter % 3 == 0) {
+							if (!paused) {
+								firstAltSequenceCounter = 0;
+								sortedTrees.get(i).tickHealth();
+							}
+						}
+						sortedTrees.get(i).tickState();
+					}
+					
+					for (int i = 0; i < weatherObjects.size(); i++) {
+						if (!paused) {
+							weatherObjects.get(i).move();
+							weatherObjects.get(i).grow();
+						}
+					}
+					
+					// New weather effects (add to timerReplay)
+					for (int i = 0; i < weatherObjects.size(); i++) {
+						clickFunction(weatherObjects.get(i).getXPosition(), weatherObjects.get(i).getYPosition(), weatherObjects.get(i).getEffectRadius());
+						
+						for (int j = 0; j < tempTreesB.size(); j++) {
+							int originX = weatherObjects.get(i).getXPosition() - (TREE_DIAMETER / 2);
+							int originY = weatherObjects.get(i).getYPosition() - (TREE_DIAMETER / 2);
+							int nearbyX = tempTreesB.get(j).getX();
+							int nearbyY = tempTreesB.get(j).getY();
+							
+							int value = (nearbyX - originX) * (nearbyX - originX) + (nearbyY - originY) * (nearbyY - originY);
+							
+							if (value <= weatherObjects.get(i).getEffectRadiusSqr() && tempTreesB.get(j).getState() != Tree.BLACK) {
+								if (weatherObjects.get(i) instanceof Rain) {
+									// (a) Removes fire completely
+//									tempTreesB.get(j).resetState();
+									
+									// (b) Reduces fire gradually
+									tempTreesB.get(j).setWet(true, 5);
 
-					repaint();
-					
-					while (clickHistoryStack.size() > 0 && tick == clickHistoryStack.get(0).getTick()) {
-						int xClicked = clickHistoryStack.get(0).getX();
-						int yClicked = clickHistoryStack.get(0).getY();
-						clickIgniteTrees(xClicked, yClicked);
-						clickHistoryStack.remove(0);
-//						System.out.print("Pop (Pre-seek)");
-//						System.out.print(" -> size: " + clickHistoryStack.size());
-//						System.out.println(" (Tick = " + tick + ")");
-					}				
-					
+								} else if (weatherObjects.get(i) instanceof Wind) {
+									// (a) Spread fire immediately at direction
+									if (tempTreesB.get(j).getState().equals(Tree.RED)) {
+										Set<Tree> treesOnFire = tempTreesB.get(j).getNearbyTrees();
+										for (Tree tree : treesOnFire) {
+											boolean isIgniteableX = false;
+											boolean isIgniteableY = false;
+
+											if (weatherObjects.get(i).getXDirection() < 0) {
+												if (tempTreesB.get(j).getX() > tree.getX()) {
+													isIgniteableX = true; 
+												}	
+											} else if (weatherObjects.get(i).getXDirection() > 0) {
+												if (tempTreesB.get(j).getX() < tree.getX()) {
+													isIgniteableX = true;
+												}
+											}
+											
+											if (weatherObjects.get(i).getYDirection() < 0) {
+												if (tempTreesB.get(j).getY() > tree.getY()) {
+													isIgniteableY = true; 
+												}	
+											} else if (weatherObjects.get(i).getYDirection() > 0) {
+												if (tempTreesB.get(j).getY() < tree.getY()) {
+													isIgniteableY = true;
+												}
+											}
+																						
+											if (isIgniteableX && isIgniteableY) {
+												tree.setState(Tree.RED);
+												ignitedTrees.add(tree);
+											} 
+										}
+									}
+								}
+								ignitedTrees.remove(tempTreesB.get(j));
+							}
+						}
+					}
 					
 					Set<Tree> newlyIgnitedTrees = new HashSet<Tree>();
 					secondAltSequenceCounter++;
 
-					if (secondAltSequenceCounter % 15 == 0) {
+					if (secondAltSequenceCounter % (SEQUENCE_LENGTH_MULTIPLIED * 3) == 0) {
 						secondAltSequenceCounter = 0;
 						int sizeBurning = ignitedTrees.size();
 						Tree[] ignitedTreesArray = (Tree[]) ignitedTrees.toArray(new Tree[sizeBurning]);
@@ -657,11 +793,144 @@ public class ForestFire extends JPanel implements ActionListener {
 					}
 					newlyIgnitedTrees.clear();
 					// System.out.println("newlyIgnitedTrees size after clear: " + newlyIgnitedTrees.size());
+					tick++;
+				}
+			}
+		});
+		
+		// Timer for replay (should consider using ONE timer)
+		timerReplay = new Timer(simDelay, new ActionListener() {
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				if (tick < 10000 && !paused) {
+					
+					getReplaySlider().setPercentPosition(tick, replayDuration);
+					
+					if (!paused) {
+						firstAltSequenceCounter++;
+					}
+					
+					for (int i = 0; i < sortedTrees.size(); i++) {
+						if (sortedTrees.get(i).getState().equals(Tree.RED) && sortedTrees.get(i).getHealth() < ANIMATION_LENGTH - 1 && firstAltSequenceCounter % 3 == 0) {
+							if (!paused) {
+								firstAltSequenceCounter = 0;
+								sortedTrees.get(i).tickHealth();
+							}
+						}
+					}
+					
+					while (clickHistoryStack.size() > 0 && tick == clickHistoryStack.get(0).getTick()) {
+						int xClicked = clickHistoryStack.get(0).getX();
+						int yClicked = clickHistoryStack.get(0).getY();
+						clickIgniteTrees(xClicked, yClicked);
+						clickHistoryStack.remove(0);
+					}				
+					
+					Set<Tree> newlyIgnitedTrees = new HashSet<Tree>();
+					secondAltSequenceCounter++;
+
+					if (secondAltSequenceCounter % (SEQUENCE_LENGTH_MULTIPLIED * 3) == 0) {
+						secondAltSequenceCounter = 0;
+						int sizeBurning = ignitedTrees.size();
+						Tree[] ignitedTreesArray = (Tree[]) ignitedTrees.toArray(new Tree[sizeBurning]);
+						for (int i = 0; i < sizeBurning; i++) {
+							int nearbySize = ignitedTreesArray[i].getNearbyTrees().size();
+							Tree[] nearbyTrees = (Tree[]) ignitedTreesArray[i].getNearbyTrees().toArray(new Tree[nearbySize]);
+
+							for (int j = 0; j < nearbyTrees.length; j++) {
+								if (nearbyTrees[j].getState().equals(Tree.GREEN)) {
+									newlyIgnitedTrees.add(nearbyTrees[j]);
+								}
+								nearbyTrees[j].setState(Tree.RED);
+							}
+						}
+
+						ignitedTrees.clear();
+
+						for (Tree tree : newlyIgnitedTrees) {
+							ignitedTrees.add(tree);
+						}
+
+					}
+					newlyIgnitedTrees.clear();
 					
 					tick++;
 				}
 			}
 		});
+		
+		timerView = new Timer(simDelay - 20, new ActionListener() {
+			@Override
+			public void actionPerformed(ActionEvent ae) {			
+				if (!mousePressedRight) {
+					JViewport viewport = jspForestFire.getViewport();
+	
+					JScrollBar verticalScrollBar = jspForestFire.getVerticalScrollBar();
+					
+					int yMin = verticalScrollBar.getMinimum();
+					int yMax = (int) (viewport.getView().getHeight() - viewport.getExtentSize().getHeight());
+	
+					// The height of ViewPort subtracted by height of ChildView is the actual yMax
+					int oldValueY = jspForestFire.getVerticalScrollBar().getValue();
+					int newValueY;
+	
+					int yDragDirection;
+	
+					/* I had to come up with my own technique that works for diagonal edge scroll because
+					   getVerticalScrollBar.setValue() and getHorizontalScrollBar.setValue() 
+					   does not happen concurrently so the animation would be choppy. ~Peter "Felix" Nguyen */
+		
+					/* With the regular method, the map would scroll vertically and then horizontally 
+					   (not truly diagonal). My implementation ensures that if the mouse is at the 
+					   corner of the map, the JScrollPane would scroll diagonally. ~Peter "Felix" Nguyen */
+					
+					/* I call this Octo-directional scrolling */
+					
+					if (MouseInfo.getPointerInfo().getLocation().getY() < 0 + 2) {
+						yDragDirection = -40;
+						newValueY = Math.max(oldValueY + yDragDirection, yMin);
+					} else if (MouseInfo.getPointerInfo().getLocation().getY() > ForestFire.screenHeight - 2) {
+						yDragDirection = +40;
+						newValueY = Math.min(oldValueY + yDragDirection, yMax);
+					} else {
+						yDragDirection = 0;
+						newValueY = oldValueY + yDragDirection;
+					}
+	
+					JScrollBar horizontalScrollBar = jspForestFire.getHorizontalScrollBar();
+					
+					// The width of ViewPort subtracted by width of ChildView is the actual xMax
+					int xMin = horizontalScrollBar.getMinimum();
+					int xMax = (int) (viewport.getView().getWidth() - viewport.getExtentSize().getWidth());
+					
+					int oldValueX = jspForestFire.getHorizontalScrollBar().getValue();
+					int newValueX;
+					
+					int xDragDirection;
+	
+					if (MouseInfo.getPointerInfo().getLocation().getX() < 0 + 2) {
+						xDragDirection = -40;
+						newValueX = Math.max(oldValueX + xDragDirection, xMin);
+					} else if (MouseInfo.getPointerInfo().getLocation().getX() > ForestFire.screenWidth - 2) {
+						xDragDirection = +40;
+						newValueX = Math.min(oldValueX + xDragDirection, xMax);
+					} else {
+						xDragDirection = 0;
+						newValueX = oldValueX + xDragDirection;
+					}
+					
+					// Update mouse cursor location
+					mouseXPosition += xDragDirection;
+					mouseYPosition += yDragDirection;
+					
+					// Octo-directional scrolling!
+					jspForestFire.getViewport().setViewPosition(new Point(newValueX, newValueY));
+				}
+				repaint();
+			}				
+		});
+		
+		timerView.start();
 		
 		// Subcomponents
 		upperPanel = new JPanel();
@@ -682,80 +951,11 @@ public class ForestFire extends JPanel implements ActionListener {
 		replaySlider = new ReplaySlider();
 	}
 
-	public boolean clickIgniteTrees(int xClick, int yClick) {
-//		System.out.println("Clicked: (" + xClick + "," + yClick + ")");
-//		System.out.println("Tick at Click: " + tick);
-		int x1 = xClick - clickRadius;
-		int x2 = xClick + clickRadius;
-		int y1 = yClick - clickRadius;
-		int y2 = yClick + clickRadius;
-		
-		if (x1 < 0) {
-			x1 = 0;
-		}
-		if (x2 > ForestFire.mapWidth) {
-			x2 = ForestFire.mapWidth;
-		}
-		if (y1 < 0) {
-			y1 = 0;
-		}
-		if (y2 > ForestFire.mapHeight) {
-			y2 = ForestFire.mapHeight;
-		}
-
-		tempTreesA.clear();
-		int y = TreeGrouper.yBinarySearch(sortedTrees, y1 - (TREE_DIAMETER / 2));
-		int yEnd = TreeGrouper.yBinarySearch(sortedTrees, y2 - (TREE_DIAMETER / 2));
-
-		for (; y <= yEnd; y++) {
-			tempTreesA.add(sortedTrees.get(y));
-		}
-		Collections.sort(tempTreesA, new TreeXComparator());
-
-		tempTreesB.clear();
-		int x = TreeGrouper.xBinarySearch(tempTreesA, x1 - (TREE_DIAMETER / 2));
-		int xEnd = TreeGrouper.xBinarySearch(tempTreesA, x2 - (TREE_DIAMETER / 2));
-
-		for (; x <= xEnd; x++) {
-			tempTreesB.add(tempTreesA.get(x));
-		}
-		
-		boolean fireStarted = false;
-		
-		for (int j = 0; j < tempTreesB.size(); j++) {
-			int originX = xClick - (TREE_DIAMETER / 2);
-			int originY = yClick - (TREE_DIAMETER / 2);
-			int nearbyX = tempTreesB.get(j).getX();
-			int nearbyY = tempTreesB.get(j).getY();
-
-			int value = (nearbyX - originX) * (nearbyX - originX) + (nearbyY - originY) * (nearbyY - originY);
-			
-			if (value <= clickRadiusSqr) {
-				if (!replayMode && !timerSimulation.isRunning()) {
-					tick = 0;
-					timerSimulation.start();
-					
-					sbPause.setEnabled(true);
-					sbStop.setEnabled(true);
-					sbReplay.setEnabled(true);
-					
-					clickHistory.clear();
-				}
-				
-				tempTreesB.get(j).setState(Tree.RED);
-				ignitedTrees.add(tempTreesB.get(j));
-				
-				fireStarted = true;
-			}
-		}
-		
-		return fireStarted;
+	public void startSimulationTimer() {
+		timerSimulation.start();
 	}
-
-	public void clickMakeLand(int xClick, int yClick) {
-//		System.out.println("Clicked: (" + xClick + "," + yClick + ")");
-//		System.out.println("Tick at Click: " + tick);
-		
+	
+	public void clickFunction(int xClick, int yClick, int clickRadius) {
 		if (sortedTrees.size() > 0) {
 			int x1 = xClick - clickRadius;
 			int x2 = xClick + clickRadius;
@@ -792,18 +992,121 @@ public class ForestFire extends JPanel implements ActionListener {
 			for (; x <= xEnd; x++) {
 				tempTreesB.add(tempTreesA.get(x));
 			}
-					
-			for (int j = 0; j < tempTreesB.size(); j++) {
-				int originX = xClick - (TREE_DIAMETER / 2);
-				int originY = yClick - (TREE_DIAMETER / 2);
-				int nearbyX = tempTreesB.get(j).getX();
-				int nearbyY = tempTreesB.get(j).getY();
+		}
+	}
 	
-				int value = (nearbyX - originX) * (nearbyX - originX) + (nearbyY - originY) * (nearbyY - originY);
-				
-				if (value <= clickRadiusSqr) {
-					sortedTrees.remove(tempTreesB.get(j));
+	public boolean clickIgniteTrees(int xClick, int yClick) {
+		clickFunction(xClick, yClick, clickRadius);
+		
+		boolean fireStarted = false;
+		
+		for (int j = 0; j < tempTreesB.size(); j++) {
+			int originX = xClick - (TREE_DIAMETER / 2);
+			int originY = yClick - (TREE_DIAMETER / 2);
+			int nearbyX = tempTreesB.get(j).getX();
+			int nearbyY = tempTreesB.get(j).getY();
+
+			int value = (nearbyX - originX) * (nearbyX - originX) + (nearbyY - originY) * (nearbyY - originY);
+			
+			if (value <= clickRadiusSqr) {
+				if (!replayMode && !timerSimulation.isRunning()) {
+					tick = 0;
+					timerSimulation.start();
+					
+					sbPause.setEnabled(true);
+					sbStop.setEnabled(true);
+					sbReplay.setEnabled(true);
+					
+					clickHistory.clear();
 				}
+				
+				tempTreesB.get(j).setState(Tree.RED);
+				ignitedTrees.add(tempTreesB.get(j));
+				
+				fireStarted = true;
+			}
+		}
+		
+		return fireStarted;
+	}
+
+	public void clickRandomTrees(int xClick, int yClick) {
+		int i = 0;
+		int count = maxTrees / 10;
+		while (i < count && sortedTrees.size() < maxTrees) {
+			int x = (int) (10 + Math.random() * (mapWidth - TREE_DIAMETER - 15));
+			int y = (int) (10 + Math.random() * (mapHeight - 50));
+
+			sortedTrees.add(new Tree(x, y));
+			i++;
+		}
+	}
+	
+	public void clickMakeTree(int xClick, int yClick) {
+		if (sortedTrees.size() < maxTrees) {
+			sortedTrees.add(new Tree(xClick - TREE_DIAMETER / 2, yClick - TREE_DIAMETER / 2));
+		}
+	}
+	
+	private int count = 0;
+	
+	public void dragMakeTree(int xClick, int yClick) {
+		if (sortedTrees.size() < maxTrees) {
+			int mode = 2;
+			
+			if (mode == 0) {
+				double random = Math.random();
+				double probability = 0.1;
+				
+				if (random < probability) {
+					sortedTrees.add(new Tree(xClick - TREE_DIAMETER / 2, yClick - TREE_DIAMETER / 2));
+				}
+			} else if (mode == 1) {
+				count++;
+				if (count == 3) {
+					count = 0;
+					sortedTrees.add(new Tree(xClick - TREE_DIAMETER / 2, yClick - TREE_DIAMETER / 2));					
+				}
+			} else {
+				sortedTrees.add(new Tree(xClick - TREE_DIAMETER / 2, yClick - TREE_DIAMETER / 2));					
+			}
+		}
+	}
+	
+	public void clickMakeTrees(int xClick, int yClick) {
+		if (sortedTrees.size() < maxTrees) {
+			boolean validSpot = false;
+			int x = xClick;
+			int y = yClick;
+			
+			while (!validSpot) {
+				x = (int) ((xClick - clickRadius) + Math.random() * (clickRadius * 2));
+				y = (int) ((yClick - clickRadius) + Math.random() * (clickRadius * 2));		
+	
+				int value = (x - xClick) * (x - xClick) + (y - yClick) * (y - yClick);
+					
+				if (value <= clickRadiusSqr) {
+					validSpot = true;
+				} 
+			}
+			
+			sortedTrees.add(new Tree(x - TREE_DIAMETER / 2, y - TREE_DIAMETER / 2));
+		}
+	}
+	
+	public void clickMakeLand(int xClick, int yClick) {
+		clickFunction(xClick, yClick, clickRadius);
+				
+		for (int j = 0; j < tempTreesB.size(); j++) {
+			int originX = xClick - (TREE_DIAMETER / 2);
+			int originY = yClick - (TREE_DIAMETER / 2);
+			int nearbyX = tempTreesB.get(j).getX();
+			int nearbyY = tempTreesB.get(j).getY();
+
+			int value = (nearbyX - originX) * (nearbyX - originX) + (nearbyY - originY) * (nearbyY - originY);
+			
+			if (value <= clickRadiusSqr) {
+				sortedTrees.remove(tempTreesB.get(j));
 			}
 		}
 	}
@@ -995,6 +1298,8 @@ public class ForestFire extends JPanel implements ActionListener {
 	
 	public void renderFireCursorBlack() {
 		do {
+			viFireCursorBlack = createVolatileImage(clickRadius * 2 + 3, clickRadius * 2 + 3 + 15, Transparency.TRANSLUCENT);
+
 			if (viFireCursorBlack.validate(getGraphicsConfiguration()) == VolatileImage.IMAGE_INCOMPATIBLE) {
 				viFireCursorBlack = createVolatileImage(viFireCursorBlack.getWidth(), viFireCursorBlack.getHeight());
 			}
@@ -1012,12 +1317,40 @@ public class ForestFire extends JPanel implements ActionListener {
 			g2d.setStroke(new BasicStroke(2));
 			g2d.drawOval(1, 1, clickRadius * 2, clickRadius * 2);
 
+			String string = "Type";
+			
+			// Fill mouse cursor
+			if (leftClickAction == LEFT_ACTION_FIRE) {
+				string = "Fire";
+				g2d.setColor(LookAndFeel.COLOR_TRANSLUCENT_LENS_FIRE);
+			} else if (leftClickAction == LEFT_ACTION_RAIN) {
+				string = "Rain";
+				g2d.setColor(LookAndFeel.COLOR_TRANSLUCENT_LENS_RAIN);
+			} else if (leftClickAction == LEFT_ACTION_WIND) { 
+				string = "Wind";
+				g2d.setColor(LookAndFeel.COLOR_TRANSLUCENT_LENS_WIND);
+			}
+			g2d.fillOval(2, 2, clickRadius * 2 - 1, clickRadius * 2 - 1);
+			
+			// Draw center dot
+			g2d.setColor(LookAndFeel.COLOR_SOLID_BLACK);
+			g2d.fillOval(clickRadius - 1, clickRadius - 1, 5, 5);
+			
+			// Name of cursor
+			g2d.setFont(new Font(g2d.getFont().getFontName(), Font.BOLD, g2d.getFont().getSize() + 2));
+			int stringWidth = (int)
+		            g2d.getFontMetrics().getStringBounds(string, g2d).getWidth();
+			int offsetX = clickRadius - stringWidth/2;
+			g2d.drawString(string, offsetX, clickRadius * 2 + 15);
+			
 			g2d.dispose();
 		} while (viFireCursorBlack.contentsLost());
 	}
 	
 	public void renderFireCursorRed() {
 		do {
+			viFireCursorRed = createVolatileImage(clickRadius * 2 + 3, clickRadius * 2 + 3, Transparency.TRANSLUCENT);
+
 			if (viFireCursorRed.validate(getGraphicsConfiguration()) == VolatileImage.IMAGE_INCOMPATIBLE) {
 				viFireCursorRed = createVolatileImage(viFireCursorRed.getWidth(), viFireCursorRed.getHeight());
 			}
@@ -1040,6 +1373,15 @@ public class ForestFire extends JPanel implements ActionListener {
 		} while (viFireCursorRed.contentsLost());
 	}
 	
+	public void makeCursorInvisible() {
+		// Draw invisible cursor
+		Toolkit toolkit = Toolkit.getDefaultToolkit();
+	    Point hotSpot = new Point(0,0);
+	    BufferedImage cursorImage = new BufferedImage(1, 1, BufferedImage.TRANSLUCENT); 
+	    Cursor invisibleCursor = toolkit.createCustomCursor(cursorImage, hotSpot, "InvisibleCursor");        
+	    setCursor(invisibleCursor);
+	}
+	
 	@Override
 	public void paintComponent(Graphics g) {
 		super.paintComponent(g);
@@ -1047,19 +1389,16 @@ public class ForestFire extends JPanel implements ActionListener {
 		gameStats.updateGameStats();
 
 		Graphics2D g2d = (Graphics2D) g;
+		g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
 
 		// Draw land
 		g.setColor(new Color(90, 170, 90));
-		g.fillRect(0, 0, mapWidth, mapHeight - heightOfOtherComponents);
+		g.fillRect(0, 0, mapWidth, mapHeight);
 
 		// Go back to black
 		g.setColor(new Color(0,0,0));
 		
 		// For all trees
-		if (!paused) {
-			firstAltSequenceCounter++;
-		}
-		
 		for (int i = 0; i < sortedTrees.size(); i++) {
 			int x = sortedTrees.get(i).getX();
 			int y = sortedTrees.get(i).getY();
@@ -1082,14 +1421,6 @@ public class ForestFire extends JPanel implements ActionListener {
 
 			// Fire animation
 			if (sortedTrees.get(i).getState().equals(Tree.RED)) {
-				
-				if (sortedTrees.get(i).getHealth() < ANIMATION_LENGTH - 1 && firstAltSequenceCounter % 3 == 0) {
-					if (!paused) {
-						firstAltSequenceCounter = 0;
-						sortedTrees.get(i).tickHealth();
-					}
-				}
-
 				g2d.drawImage(vfireAnimation[sortedTrees.get(i).getHealth()], x, y - 6, this);
 			}
 			
@@ -1110,26 +1441,56 @@ public class ForestFire extends JPanel implements ActionListener {
 			
 			int stringWidth = (int)
 		            g2d.getFontMetrics().getStringBounds(string, g2d).getWidth();
-			int offsetX = mapWidth/2 - stringWidth/2;
+			int offsetX = jspForestFire.getHorizontalScrollBar().getValue() + (screenWidth - 40)/2 - stringWidth/2;
 			
 			int stringHeight = (int)
 		            g2d.getFontMetrics().getStringBounds(string, g2d).getHeight();
-			int offsetY = mapHeight/2 - stringHeight/2;
+			int offsetY = jspForestFire.getVerticalScrollBar().getValue() + (screenHeight - 40)/2 - stringHeight/2;
 	        
-			g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
 			g.drawString(string, offsetX, offsetY);
-			
+
 			if (!dialogOpen) {
 				g.setColor(LookAndFeel.COLOR_TRANSLUCENT_BLACK);
 				g.fillRect(0, 0, mapWidth, mapHeight);
 			}
 		}
 		
+		// Draw weather objects
+		if (timerReplay.isRunning() || timerSimulation.isRunning()) {
+			// Lambda expression makes things easier
+			weatherObjects.removeIf(wo -> !wo.isAlive());
+			
+			for (int i = 0; i < weatherObjects.size(); i++) {
+				int xPosition = weatherObjects.get(i).getXPosition();
+				int yPosition = weatherObjects.get(i).getYPosition();
+				int xDestination = weatherObjects.get(i).getXDestination();
+				int yDestination = weatherObjects.get(i).getYDestination();
+				int radius = weatherObjects.get(i).getEffectRadius();
+				
+				// Draw WeatherObject
+				g.setColor(weatherObjects.get(i).getLensColor());
+				g.fillOval(xPosition - radius, yPosition - radius, radius * 2, radius * 2);
+				
+				// Draw WeatherObject border
+				g.setColor(weatherObjects.get(i).getBorderColor());
+				g.drawOval(xPosition - radius, yPosition - radius, radius * 2, radius * 2);
+				
+				// Draw direction line
+				g.setColor(LookAndFeel.COLOR_SOLID_BLACK);
+				g.drawLine(xPosition, yPosition, xDestination, yDestination);
+		
+				// Draw final destination (large dot)
+				g.fillOval(xDestination - 5, yDestination - 5, 9, 9);
+			}
+		}
+		
 		// Mouse cursor
-		if (fireCursorClicked) {
-			g2d.drawImage(viFireCursorRed, mouseXPosition - clickRadius, mouseYPosition - clickRadius, this);
-		} else {
-			g2d.drawImage(viFireCursorBlack, mouseXPosition - clickRadius, mouseYPosition - clickRadius, this);
+		if (mouseEntered) {
+			if (fireCursorClicked) {
+				g2d.drawImage(viFireCursorRed, mouseXPosition - clickRadius, mouseYPosition - clickRadius, this);
+			} else {
+				g2d.drawImage(viFireCursorBlack, mouseXPosition - clickRadius, mouseYPosition - clickRadius, this);
+			}
 		}
 	}
 
@@ -1137,7 +1498,7 @@ public class ForestFire extends JPanel implements ActionListener {
 		// Generate trees
 		for (int i = 0; i < numTrees; i++) {
 			int x = (int) (10 + Math.random() * (mapWidth - TREE_DIAMETER - 15));
-			int y = (int) (10 + Math.random() * (mapHeight - 50 - heightOfOtherComponents));
+			int y = (int) (10 + Math.random() * (mapHeight - 50));
 
 			sortedTrees.add(new Tree(x, y));
 		}
@@ -1154,52 +1515,11 @@ public class ForestFire extends JPanel implements ActionListener {
 		// Different sort methods are for my own learning
 		if (sortMethod == 1) {
 			Collections.sort(sortedTrees, new TreeXComparator());
-			Collections.sort(sortedTrees, new TreeYComparator());
+			Collections.sort(sortedTrees, new TreeYComparator()); 
 		} else if (sortMethod == 2) {
 			Collections.sort(sortedTrees, new TreeComparator());
 		} else {
 			System.out.println("Invalid sort method, trees are unsorted");
-		}
-	}
-
-
-	@Override
-	public void actionPerformed(ActionEvent e) {		
-		if (tick < 10000 && !paused) {
-			repaint();
-			
-			Set<Tree> newlyIgnitedTrees = new HashSet<Tree>();
-			secondAltSequenceCounter++;
-
-			if (secondAltSequenceCounter % 15 == 0) {
-				secondAltSequenceCounter = 0;
-				int sizeBurning = ignitedTrees.size();
-				Tree[] ignitedTreesArray = (Tree[]) ignitedTrees.toArray(new Tree[sizeBurning]);
-				for (int i = 0; i < sizeBurning; i++) {
-					int nearbySize = ignitedTreesArray[i].getNearbyTrees().size();
-					Tree[] nearbyTrees = (Tree[]) ignitedTreesArray[i].getNearbyTrees().toArray(new Tree[nearbySize]);
-
-					for (int j = 0; j < nearbyTrees.length; j++) {
-						if (nearbyTrees[j].getState().equals(Tree.GREEN)) {
-							newlyIgnitedTrees.add(nearbyTrees[j]);
-						}
-						nearbyTrees[j].setState(Tree.RED);
-					}
-				}
-				// System.out.println("newlyIgnitedTrees Size: " + newlyIgnitedTrees.size());
-				// System.out.println("ingitedTrees size: " + ignitedTrees.size());
-
-				ignitedTrees.clear();
-				// System.out.println("ignitedTrees size after clear: " + ignitedTrees.size());
-
-				for (Tree tree : newlyIgnitedTrees) {
-					ignitedTrees.add(tree);
-				}
-
-			}
-			newlyIgnitedTrees.clear();
-			// System.out.println("newlyIgnitedTrees size after clear: " + newlyIgnitedTrees.size());
-			tick++;
 		}
 	}
 	
@@ -1227,7 +1547,7 @@ public class ForestFire extends JPanel implements ActionListener {
 	}
 	
 	public void setClickUnpauses(boolean clickUnpauses) {
-		this.clickUnpauses = clickUnpauses;
+		this.unpausedOnClick = clickUnpauses;
 	}
 	
 	public void rebuildTreeSets() {
@@ -1245,39 +1565,33 @@ public class ForestFire extends JPanel implements ActionListener {
 			ForestFire.selectedPopulation = POPULATION_ULTRALARGE;
 			break;
 		case 1:
-			ForestFire.selectedPopulation = POPULATION_XXXXLARGE;
-			break;
-		case 2:
 			ForestFire.selectedPopulation = POPULATION_XXXLARGE;
 			break;
-		case 3:
+		case 2:
 			ForestFire.selectedPopulation = POPULATION_XXLARGE;
 			break;
-		case 4:
+		case 3:
 			ForestFire.selectedPopulation = POPULATION_XLARGE;
 			break;
-		case 5:
+		case 4:
 			ForestFire.selectedPopulation = POPULATION_LARGE;
 			break;
-		case 6:
+		case 5:
 			ForestFire.selectedPopulation = POPULATION_MEDIUM;
 			break;
-		case 7:
+		case 6:
 			ForestFire.selectedPopulation = POPULATION_SMALL;
 			break;
-		case 8:
+		case 7:
 			ForestFire.selectedPopulation = POPULATION_XSMALL;
 			break;
-		case 9:
+		case 8:
 			ForestFire.selectedPopulation = POPULATION_XXSMALL;
 			break;
-		case 10:
+		case 9:
 			ForestFire.selectedPopulation = POPULATION_XXXSMALL;
 			break;
-		case 11:
-			ForestFire.selectedPopulation = POPULATION_XXXXSMALL;
-			break;
-		case 12:
+		case 10:
 			ForestFire.selectedPopulation = POPULATION_ULTRASMALL;
 			break;
 		default:
@@ -1303,6 +1617,19 @@ public class ForestFire extends JPanel implements ActionListener {
 		System.out.println("maxTrees (after rounding): " + maxTrees);
 	}
 	
+	public void emptyMap() {
+		// I don't think I need to clear the burning trees
+		if (!timerSimulation.isRunning() && !timerReplay.isRunning()) {
+			
+			// Create array of trees and sort them
+			sortedTrees = new ArrayList<Tree>();
+			makeTrees(2, 0);
+			
+			// Add neighboring trees to each tree
+			TreeGrouper.buildTreeSets(sortedTrees);	
+		}
+	}
+	
 	public void fillTrees() {
 		// I don't think I need to clear the burning trees
 		if (!timerSimulation.isRunning() && !timerReplay.isRunning()) {
@@ -1313,35 +1640,33 @@ public class ForestFire extends JPanel implements ActionListener {
 			
 			// Add neighboring trees to each tree
 			TreeGrouper.buildTreeSets(sortedTrees);	
-			
-			ForestFire.this.repaint();
 		}
 	}
 	
 	public void setMapSize(int mapWidth, int mapHeight) {
 		// prevent width and height from being negative
-		if (mapWidth < 100) {
-			mapWidth = mapWidth + 100;
+		if (mapWidth < MIN_WIDTH) {
+			mapWidth = MIN_WIDTH;
 		}
-		if (mapHeight < 300) {
-			mapHeight = mapHeight + 300;
+		if (mapHeight < MIN_HEIGHT) {
+			mapHeight = MIN_HEIGHT;
 		}
 
 		ForestFire.mapWidth = mapWidth;
 		ForestFire.mapHeight = mapHeight;
 		
-		Dimension fixedSize3 = new Dimension(ForestFire.mapWidth + 40, ForestFire.mapHeight - heightOfOtherComponents + 40);
+		Dimension panelDimension = new Dimension(ForestFire.mapWidth + 40, ForestFire.mapHeight + 40);
 		mapPanel.setLayout(new GridBagLayout());
-		mapPanel.setPreferredSize(fixedSize3);
-		mapPanel.setSize(fixedSize3);
-		mapPanel.setMinimumSize(fixedSize3);
-		mapPanel.setMaximumSize(fixedSize3);
+		mapPanel.setPreferredSize(panelDimension);
+		mapPanel.setSize(panelDimension);
+		mapPanel.setMinimumSize(panelDimension);
+		mapPanel.setMaximumSize(panelDimension);
 		
-		Dimension fixedSize = new Dimension(ForestFire.mapWidth, ForestFire.mapHeight - heightOfOtherComponents);
-		setPreferredSize(fixedSize);
-		setSize(fixedSize);
-		setMinimumSize(fixedSize);
-		setMaximumSize(fixedSize);
+		Dimension mapDimension = new Dimension(ForestFire.mapWidth, ForestFire.mapHeight);
+		setPreferredSize(mapDimension);
+		setSize(mapDimension);
+		setMinimumSize(mapDimension);
+		setMaximumSize(mapDimension);
 	}
 	
 	class MapButtons extends JPanel {
@@ -1365,7 +1690,7 @@ public class ForestFire extends JPanel implements ActionListener {
 			// Event handling START
 			sbPlay.addActionListener(new ActionListener() {
 				@Override
-				public void actionPerformed(ActionEvent arg0) {
+				public void actionPerformed(ActionEvent ae) {
 					play();
 					pausePressed = false; 
 				}
@@ -1399,8 +1724,6 @@ public class ForestFire extends JPanel implements ActionListener {
 						replayDuration = tick;						
 					}
 						
-					System.out.println("replayDuration REPLAY: " + replayDuration);
-
 					replayMode = true;
 					
 					tick = 0;
@@ -1415,6 +1738,7 @@ public class ForestFire extends JPanel implements ActionListener {
 					}
 
 					paused = false;
+					playing = true;
 					stopped = false;
 					
 					sbPlay.setEnabled(true);
@@ -1426,7 +1750,7 @@ public class ForestFire extends JPanel implements ActionListener {
 			
 			sbSlow.addActionListener(new ActionListener() {
 				@Override
-				public void actionPerformed(ActionEvent arg0) {
+				public void actionPerformed(ActionEvent ae) {
 					timerSimulation.setDelay((int)(simDelay / speedSlow));
 					timerReplay.setDelay((int)(simDelay / speedSlow));
 						sbSlow.setEnabled(false);
@@ -1438,7 +1762,7 @@ public class ForestFire extends JPanel implements ActionListener {
 			
 			sbNormal.addActionListener(new ActionListener() {
 				@Override
-				public void actionPerformed(ActionEvent arg0) {
+				public void actionPerformed(ActionEvent ae) {
 					timerSimulation.setDelay((int)(simDelay / speedNormal));
 					timerReplay.setDelay((int)(simDelay / speedNormal));
 					sbSlow.setEnabled(true);
@@ -1450,7 +1774,7 @@ public class ForestFire extends JPanel implements ActionListener {
 			
 			sbFast.addActionListener(new ActionListener() {
 				@Override
-				public void actionPerformed(ActionEvent arg0) {
+				public void actionPerformed(ActionEvent ae) {
 					timerSimulation.setDelay((int)(simDelay / speedFast));
 					timerReplay.setDelay((int)(simDelay / speedFast));
 					sbSlow.setEnabled(true);
@@ -1462,7 +1786,7 @@ public class ForestFire extends JPanel implements ActionListener {
 			
 			sbFaster.addActionListener(new ActionListener() {
 				@Override
-				public void actionPerformed(ActionEvent arg0) {
+				public void actionPerformed(ActionEvent ae) {
 					timerSimulation.setDelay((int)(simDelay / speedFaster));
 					timerReplay.setDelay((int)(simDelay / speedFaster));
 					sbSlow.setEnabled(true);
@@ -1500,6 +1824,7 @@ public class ForestFire extends JPanel implements ActionListener {
 		
 		public void play() {
 			paused = false;
+			playing = true;
 			
 			sbPlay.setEnabled(false);
 			sbPause.setEnabled(true);
@@ -1508,15 +1833,16 @@ public class ForestFire extends JPanel implements ActionListener {
 		
 		public void pause() {
 			paused = true;
-
+			playing = false;
+			
 			sbPlay.setEnabled(true);
 			sbPause.setEnabled(false);
 			sbStop.setEnabled(true);
-			
-			ForestFire.this.repaint();
 		}
 		
 		public void stop() {
+			playing = false;
+			
 			if (!replayMode) {
 				replayDuration = tick;
 			}
@@ -1529,7 +1855,8 @@ public class ForestFire extends JPanel implements ActionListener {
 			timerSimulation.stop();
 			
 			ignitedTrees.clear();
-		
+			weatherObjects.clear();
+			
 			for (Tree tree : sortedTrees) {
 				tree.resetState();
 			}
@@ -1542,7 +1869,6 @@ public class ForestFire extends JPanel implements ActionListener {
 			sbStop.setEnabled(false);
 			sbReplay.setEnabled(true);
 			
-			ForestFire.this.repaint();
 			getReplaySlider().repaint();
 		}
 	}
@@ -1556,38 +1882,82 @@ public class ForestFire extends JPanel implements ActionListener {
 	}
 	
 	class EditButtons extends JPanel {
-		private StandardButton sbMakeTrees = new StandardButton("Tree", ButtonType.BUTTON_ROUNDED_RECTANGLUR, Theme.STANDARD_BLUEGREEN_THEME, Theme.STANDARD_PALEBROWN_THEME, Theme.STANDARD_BLACK_THEME);
-		private StandardButton sbMakeLand = new StandardButton("Land", ButtonType.BUTTON_ROUNDED_RECTANGLUR, Theme.STANDARD_BLUEGREEN_THEME, Theme.STANDARD_PALEBROWN_THEME, Theme.STANDARD_BLACK_THEME);
-		private StandardButton sbMakeSea = new StandardButton("Sea", ButtonType.BUTTON_ROUNDED_RECTANGLUR, Theme.STANDARD_BLUEGREEN_THEME, Theme.STANDARD_PALEBROWN_THEME, Theme.STANDARD_BLACK_THEME);
 		private JComboBox<String> jcbFill = new JComboBox<String>();
+		private StandardButton sbPen = new StandardButton("Pen", ButtonType.BUTTON_ROUNDED_RECTANGLUR, Theme.STANDARD_BLUEGREEN_THEME, Theme.STANDARD_PALEBROWN_THEME, Theme.STANDARD_BLACK_THEME);
+		private StandardButton sbBrush = new StandardButton("Brush", ButtonType.BUTTON_ROUNDED_RECTANGLUR, Theme.STANDARD_BLUEGREEN_THEME, Theme.STANDARD_PALEBROWN_THEME, Theme.STANDARD_BLACK_THEME);
+		private StandardButton sbRandom = new StandardButton("Random", ButtonType.BUTTON_ROUNDED_RECTANGLUR, Theme.STANDARD_BLUEGREEN_THEME, Theme.STANDARD_PALEBROWN_THEME, Theme.STANDARD_BLACK_THEME);
 		private StandardButton sbFill = new StandardButton("Fill", ButtonType.BUTTON_ROUNDED_RECTANGLUR, Theme.STANDARD_BLUEGREEN_THEME, Theme.STANDARD_PALEBROWN_THEME, Theme.STANDARD_BLACK_THEME);
 		private StandardButton sbFinish = new StandardButton("Finish", ButtonType.BUTTON_ROUNDED_RECTANGLUR, Theme.STANDARD_BLUEGREEN_THEME, Theme.STANDARD_PALEBROWN_THEME, Theme.STANDARD_BLACK_THEME);
 		
-		public EditButtons() {		
-			sbMakeTrees.setEnabled(false);
-			
+		public EditButtons() {					
 			// See through
 			setOpaque(false);
 
 			// Fill options
-			jcbFill.addItem("Trees");
+			jcbFill.addItem("Tree");
 			jcbFill.addItem("Land");
 			jcbFill.addItem("Sea");
 			
-			// Buttons to place map objects
-			JPanel landscapeButtons = new JPanel(new FlowLayout(FlowLayout.LEFT));
-			landscapeButtons.setOpaque(false);
-			landscapeButtons.setBorder(BorderFactory.createTitledBorder(BorderFactory.createLineBorder(Color.BLACK, 2), "Landscape Controls"));
-			landscapeButtons.add(sbMakeTrees);
-			landscapeButtons.add(sbMakeLand);
-			landscapeButtons.add(sbMakeSea);
-			
-			// Buttons to fill out map
+			// Buttons to edit map
 			JPanel fillButtons = new JPanel(new FlowLayout(FlowLayout.LEFT));
 			fillButtons.setOpaque(false);
-			fillButtons.setBorder(BorderFactory.createTitledBorder(BorderFactory.createLineBorder(Color.BLACK, 2), "Fill Controls"));
+			fillButtons.setBorder(BorderFactory.createTitledBorder(BorderFactory.createLineBorder(Color.BLACK, 2), "Landscape Controls"));
 			fillButtons.add(jcbFill);
-			fillButtons.add(sbFill);
+
+			JPanel panel = new JPanel(new FlowLayout(FlowLayout.LEFT));
+			panel.setOpaque(false);
+			FlowLayout layout = (FlowLayout) panel.getLayout();
+			layout.setVgap(0);
+			panel.add(sbPen);
+			panel.add(sbBrush);
+			panel.add(sbRandom);
+			panel.add(sbFill);
+			sbBrush.setEnabled(false);
+			fillButtons.add(panel);
+			
+			jcbFill.addActionListener(new ActionListener() {
+				@Override
+				public void actionPerformed(ActionEvent ae) {
+					String selection = (String) jcbFill.getSelectedItem();
+					switch (selection) {
+						case "Tree":
+							makeType = MAKE_TREE;
+							
+							panel.removeAll();
+							panel.add(sbPen);
+							panel.add(sbBrush);
+							panel.add(sbRandom);
+							panel.add(sbFill);
+							break;
+						case "Land":
+							makeType = MAKE_LAND;
+
+							panel.removeAll();
+							panel.add(sbBrush);
+							panel.add(sbFill);
+							break;
+						case "Sea":
+							makeType = MAKE_SEA;
+
+							panel.removeAll();
+							panel.add(sbBrush);
+							panel.add(sbRandom);
+							panel.add(sbFill);
+							break;
+						default:
+							// No action
+							System.out.println("NO ACTION");
+					}
+					paintType = PAINT_BRUSH;
+					
+					sbPen.setEnabled(true);
+					sbBrush.setEnabled(false);
+					sbRandom.setEnabled(true);
+					sbFill.setEnabled(true);
+					
+					fillButtons.revalidate();
+				}
+			});
 			
 			// Exit edit mode
 			JPanel otherButtons = new JPanel(new FlowLayout(FlowLayout.LEFT));
@@ -1597,53 +1967,42 @@ public class ForestFire extends JPanel implements ActionListener {
 			otherButtons.add(sbFinish);
 			
 			// Listeners START
-			sbMakeTrees.addActionListener(e -> {
-				paintBrush = BRUSH_TREE;
+			sbPen.addActionListener(e -> {
+				paintType = PAINT_PEN;
 				
-				sbMakeTrees.setEnabled(false);
-				sbMakeLand.setEnabled(true);
-				sbMakeSea.setEnabled(true);				
+				sbPen.setEnabled(false);
+				sbBrush.setEnabled(true);
+				sbRandom.setEnabled(true);
+				sbFill.setEnabled(true);
 			});
 			
-			sbMakeLand.addActionListener(e -> {
-				paintBrush = BRUSH_LAND;
+			sbBrush.addActionListener(e -> {
+				paintType = PAINT_BRUSH;
 				
-				sbMakeTrees.setEnabled(true);
-				sbMakeLand.setEnabled(false);
-				sbMakeSea.setEnabled(true);				
+				sbPen.setEnabled(true);
+				sbBrush.setEnabled(false);
+				sbRandom.setEnabled(true);
+				sbFill.setEnabled(true);
 			});
 			
-			sbMakeSea.addActionListener(e -> {
-				paintBrush = BRUSH_SEA;
+			sbRandom.addActionListener(e -> {
+				paintType = PAINT_RANDOM;
 				
-				sbMakeTrees.setEnabled(true);
-				sbMakeLand.setEnabled(true);
-				sbMakeSea.setEnabled(false);				
+				sbPen.setEnabled(true);
+				sbBrush.setEnabled(true);
+				sbRandom.setEnabled(false);
+				sbFill.setEnabled(true);
 			});
 			
 			sbFill.addActionListener(e -> {
 				int selection = jcbFill.getSelectedIndex();
 				
-				if (selection == 0) {
-					fillTrees();
-				} else if (selection == 1) {
-					// I don't think I need to clear the burning trees
-					if (!timerSimulation.isRunning() && !timerReplay.isRunning()) {
-						
-						// Create array of trees and sort them
-						sortedTrees = new ArrayList<Tree>();
-						makeTrees(2, 0);
-						
-						// Add neighboring trees to each tree
-						TreeGrouper.buildTreeSets(sortedTrees);	
-						
-						ForestFire.this.repaint();
-					}
-				} else if (selection == 2) {
-
-				} else {
-					System.out.println("NO ACTION");
-				}
+				paintType = PAINT_FILL;
+				
+				sbPen.setEnabled(true);
+				sbBrush.setEnabled(true);
+				sbRandom.setEnabled(true);
+				sbFill.setEnabled(false);
 			});
 			
 			sbFinish.addActionListener(e -> {
@@ -1652,7 +2011,6 @@ public class ForestFire extends JPanel implements ActionListener {
 			}); 
 			// Listeners FINISH
 			
-			add(landscapeButtons);
 			add(fillButtons);
 			add(otherButtons);
 		}
@@ -1669,7 +2027,6 @@ public class ForestFire extends JPanel implements ActionListener {
 	class ReplaySlider extends JPanel {
 		private int xPosition = 0;
 		private int percentPosition = 0;
-		// Recommended: combination of both colors instead of just one
 		private Color lightBluePosition = new Color(131,208,201);
 		private Color lightGreenPosition = new Color(90,170,90);
 		private JLabel trackSlider;
@@ -1699,9 +2056,6 @@ public class ForestFire extends JPanel implements ActionListener {
 						rebuildStates();
 						if (!pausePressed) {
 							paused = false;
-						}
-						if (paused) {
-							ForestFire.this.repaint();
 						}
 					}
 				}
@@ -1796,15 +2150,12 @@ public class ForestFire extends JPanel implements ActionListener {
 					int yClicked = clickHistoryStack.get(0).getY();
 					clickIgniteTrees(xClicked, yClicked);
 					clickHistoryStack.remove(0);
-//					System.out.print("Pop (Post-seek)");
-//					System.out.print(" -> size: " + clickHistoryStack.size());
-//					System.out.println(" (Tick = " + replayTick + ")");
 				}				
 				
 				Set<Tree> newlyIgnitedTrees = new HashSet<Tree>();
 				secondAltSequenceCounter++;
 
-				if (secondAltSequenceCounter % 15 == 0) {
+				if (secondAltSequenceCounter % (SEQUENCE_LENGTH_MULTIPLIED * 3) == 0) {
 					secondAltSequenceCounter = 0;
 					int sizeBurning = ignitedTrees.size();
 					Tree[] ignitedTreesArray = (Tree[]) ignitedTrees.toArray(new Tree[sizeBurning]);
@@ -1832,11 +2183,6 @@ public class ForestFire extends JPanel implements ActionListener {
 			}
 		}
 		
-		@Override
-		public void repaint() {
-			super.repaint();
-		}
-		
 		public void setPercentPosition(int tick, int replayDuration) {
 			percentPosition = (int) (100 * (float) tick / (float) replayDuration);
 			xPosition = (int) (((float) percentPosition / 100f) * trackSlider.getWidth());
@@ -1844,8 +2190,6 @@ public class ForestFire extends JPanel implements ActionListener {
 			if (xPosition > trackSlider.getWidth()) {
 				xPosition = trackSlider.getWidth();
 			}
-
-			repaint();
 		}
 	}
 	
